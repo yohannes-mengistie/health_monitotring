@@ -13,10 +13,15 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
+            $table->string('first_name');
+            $table->string('last_name');
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            $table->date('dob'); // Date of Birth
+            $table->enum('gender', ['male', 'female', 'other']); // Using enum for data integrity
+            $table->decimal('weight', 5, 2); // Renamed from wight, 999.99 max
+            $table->decimal('height', 5, 2); // 999.99 max (meters or cm)
             $table->rememberToken();
             $table->timestamps();
         });
