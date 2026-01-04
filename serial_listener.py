@@ -1,89 +1,91 @@
 import serial
 import requests
 import time
+import threading
+from flask import Flask, request, jsonify
 
-# -------------------------------
-# CONFIGURATION
-# -------------------------------
-SERIAL_PORT = "COM5"      # Change this to your Proteus virtual COM port
+# --- Configuration ---
+SERIAL_PORT = 'COM5'  
 BAUD_RATE = 9600
-LARAVEL_API_URL = "http://127.0.0.1:8000/api/health-data"
+LARAVEL_API_URL = "http://127.0.0.1:8000/api/sensor-data"
 
-# -------------------------------
-# SERIAL CONNECTION
-# -------------------------------
-print("Connecting to serial port...")
-ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
-time.sleep(2)
-print("Connected!\nListening for data...\n")
+# Global variable to hold the token received from the mobile phone
+current_token = None
 
-# -------------------------------
-# MAIN LOOP
-# -------------------------------
-while True:
+# --- Flask App to receive Token from Mobile ---
+app = Flask(__name__)
+
+@app.route('/set-token', methods=['POST'])
+def set_token():
+    global current_token
+    data = request.get_json()
+    
+    if 'token' in data:
+        current_token = data['token']
+        print(f"\n[AUTH] New token received! System activated.")
+        return jsonify({"message": "Token updated successfully"}), 200
+    return jsonify({"error": "Invalid payload"}), 400
+
+def start_flask():
+    # Run Flask on port 5001 - Mobile app will POST to http://<PC_IP>:5001/set-token
+    app.run(host='0.0.0.0', port=5001, debug=False, use_reloader=False)
+
+# --- Main Logic for Serial Data ---
+def listen_to_sensors():
+    global current_token
     try:
-        raw = ser.readline().decode().strip()
+        ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
+        print(f"--- Listening on {SERIAL_PORT} ---")
+        print("--- Waiting for Mobile App to send token to port 5001... ---")
 
-        if not raw:
-            continue
+        while True:
+            # Only proceed if we have a token from the mobile app
+            if current_token:
+                if ser.in_waiting > 0:
+                    line = ser.readline().decode('utf-8').strip()
+                    
+                    try:
+                        # Parsing Heart Rate and Temperature (matching your ML model requirements)
+                        hr, temp = line.split(',')
+                        
+                        payload = {
+                            "heart_rate": float(hr),
+                            "body_temperature": float(temp)
+                        }
 
-        print("RAW:", raw)
+                        # Send to Laravel with the dynamic Bearer Token
+                        headers = {
+                            "Authorization": f"Bearer {current_token}",
+                            "Accept": "application/json"
+                        }
+                        
+                        response = requests.post(LARAVEL_API_URL, json=payload, headers=headers)
+                        
+                        if response.status_code == 200:
+                            print(f"✅ Sent: HR {hr}, Temp {temp} | Risk: {response.json().get('data', {}).get('analysis', {}).get('predicted_risk')}")
+                        elif response.status_code == 401:
+                            print("❌ Token expired or invalid. Please re-login on mobile.")
+                            current_token = None # Reset token to wait for a new one
+                        else:
+                            print(f"⚠️ Laravel Error: {response.status_code}")
 
-        # ----------------------------------------------------
-        # 1. LIVE TEMPERATURE STREAM
-        # Format: LIVE_TEMP_C:36.5
-        # ----------------------------------------------------
-        if raw.startswith("LIVE_TEMP_C:"):
-            temp_str = raw.split(":")[1]
-            temp_value = float(temp_str)
-
-            payload = {
-                "device_id": "simulator_01",
-                "temperature": temp_value,
-                "heart_rate": None
-            }
-
-            print("Sending LIVE temperature →", payload)
-            send_to_backend(payload)
+                    except ValueError:
+                        print(f"⚠️ Invalid data format from Proteus: {line}")
             
-            continue
+            time.sleep(0.1) 
 
-        # ----------------------------------------------------
-        # 2. FINAL COMPLETE DATA SET
-        # Format: FINAL_DATA_SET,<bpm>,<temp>
-        # Example: FINAL_DATA_SET,75,36.5
-        # ----------------------------------------------------
-        if raw.startswith("FINAL_DATA_SET"):
-            _, bpm_str, temp_str = raw.split(",")
+    except serial.SerialException as e:
+        print(f"Serial Error: {e}")
+    except KeyboardInterrupt:
+        print("Closing Listener...")
+    finally:
+        if 'ser' in locals(): ser.close()
 
-            bpm_value = int(bpm_str)
-            temp_value = float(temp_str)
+if __name__ == "__main__":
+    # Start the Flask server in a separate thread so it doesn't block the serial loop
+    flask_thread = threading.Thread(target=start_flask)
+    flask_thread.daemon = True
+    flask_thread.start()
 
-            payload = {
-                "device_id": "simulator_01",
-                "temperature": temp_value,
-                "heart_rate": bpm_value
-            }
-
-            print("Sending FINAL measurement →", payload)
-            requests.post(LARAVEL_API_URL, json=payload)
-            continue
-
-        # ----------------------------------------------------
-        # IGNORE OTHER LINES (debug messages)
-        # ----------------------------------------------------
-        # Example: PULSE_DETECTED, TIME_UPDATE, etc.
-
-    except Exception as e:
-        print("Error:", e)
-        time.sleep(1)
-
-    def send_to_backend(data):
-        try:
-            response = requests.post(LARAVEL_API_URL, json=data)
-            if response.status_code == 200:
-                print("Data sent successfully!")
-            else:
-                print("Failed to send data. Status code:", response.status_code)
-        except Exception as e:
-            print("Error sending data:", e) 
+    # Start the sensor listener
+    listen_to_sensors()
