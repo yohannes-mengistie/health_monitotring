@@ -1,0 +1,1173 @@
+2026-01-16 00:51:28,354 [INFO] Starting Medical Risk Prediction API...
+2026-01-16 00:51:52,175 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 00:51:52,179 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 00:51:57,361 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 00:51:57,364 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 00:52:01,396 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 00:52:01,399 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 00:52:05,184 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 00:52:05,185 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 00:52:09,310 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 00:52:09,312 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 00:52:13,050 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 00:52:13,052 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 00:52:16,851 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 00:52:16,856 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 00:52:20,887 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 00:52:20,890 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 00:52:25,006 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 00:52:25,009 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 00:52:28,525 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 00:52:28,527 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 00:52:32,160 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 00:52:32,162 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 00:52:35,559 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 00:52:35,561 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 00:52:38,886 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 00:52:38,887 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 00:52:42,351 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 00:52:42,354 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 00:52:46,253 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 00:52:46,255 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 00:52:49,895 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 00:52:49,897 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 00:52:53,328 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 00:52:53,330 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 00:52:56,811 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 00:52:56,812 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 00:53:00,540 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 00:53:00,547 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 00:53:04,476 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 00:53:04,479 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 00:53:08,660 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 00:53:08,663 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 00:53:12,516 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 00:53:12,518 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 00:56:41,368 [INFO] Starting Medical Risk Prediction API...
+2026-01-16 01:04:26,124 [INFO] Starting Medical Risk Prediction API...
+2026-01-16 01:05:27,260 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:05:27,261 [WARNING] Dangerous heart rate detected: 0.0 bpm
+2026-01-16 01:05:27,261 [INFO] Medical rule triggered for patient_id=1: Rule: Dangerous heart rate
+2026-01-16 01:05:31,392 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:05:31,393 [WARNING] Dangerous heart rate detected: 0.0 bpm
+2026-01-16 01:05:31,394 [INFO] Medical rule triggered for patient_id=1: Rule: Dangerous heart rate
+2026-01-16 01:05:34,960 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:05:34,963 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:05:37,430 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:05:37,433 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:05:40,847 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:05:40,851 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:05:44,080 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:05:44,082 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:05:47,524 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:05:47,527 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:05:51,772 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:05:51,775 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:05:55,511 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:05:55,513 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:05:59,414 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:05:59,417 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:06:04,077 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:06:04,080 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:06:08,218 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:06:08,218 [WARNING] Dangerous heart rate detected: 40.0 bpm
+2026-01-16 01:06:08,219 [INFO] Medical rule triggered for patient_id=1: Rule: Dangerous heart rate
+2026-01-16 01:06:11,906 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:06:11,908 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:06:15,478 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:06:15,481 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:06:18,962 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:06:18,965 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:06:22,237 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:06:22,240 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:06:25,229 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:06:25,232 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:06:28,655 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:06:28,656 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:06:32,205 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:06:32,208 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:06:35,721 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:06:35,723 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:06:39,622 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:06:39,624 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:06:43,499 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:06:43,502 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:06:45,686 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:06:45,689 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:06:48,622 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:06:48,625 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:06:52,608 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:06:52,611 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:06:56,302 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:06:56,306 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:06:59,931 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:06:59,933 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:07:03,065 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:07:03,066 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:07:06,237 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:07:06,240 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:07:10,113 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:07:10,116 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:07:14,108 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:07:14,112 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:07:18,419 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:07:18,421 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:07:22,275 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:07:22,278 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:07:26,314 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:07:26,316 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:07:30,629 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:07:30,633 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:07:34,509 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:07:34,511 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:07:38,080 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:07:38,083 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:07:42,088 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:07:42,090 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:07:46,200 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:07:46,202 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:07:50,062 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:07:50,064 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:07:53,841 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:07:53,844 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:07:57,352 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:07:57,355 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:08:01,039 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:08:01,041 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:08:04,552 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:08:04,556 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:08:08,647 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:08:08,651 [ERROR] Error during prediction for patient_id=1
+Traceback (most recent call last):
+  File "C:\Users\hp\Desktop\final_year_thesis\health_monitotring\model_service.py", line 160, in predict
+    proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\pipeline.py", line 903, in predict_proba
+    Xt = transform.transform(Xt)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\utils\_set_output.py", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\hp\AppData\Local\Programs\Python\Python311\Lib\site-packages\sklearn\compose\_column_transformer.py", line 1090, in transform
+    raise ValueError(f"columns are missing: {diff}")
+ValueError: columns are missing: {'Gender'}
+2026-01-16 01:08:58,308 [INFO] Starting Medical Risk Prediction API...
+2026-01-16 01:09:07,390 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:09:07,583 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:09:10,834 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:09:10,851 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:09:14,134 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:09:14,147 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:09:18,065 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:09:18,080 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:09:21,516 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:09:21,532 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:09:25,068 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:09:25,080 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:09:28,746 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:09:28,757 [INFO] ML prediction for patient_id=1: Medium Risk | probs={'High Risk': 0.002, 'Low Risk': 0.003, 'Medium Risk': 0.995}
+2026-01-16 01:09:32,247 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:09:32,261 [INFO] ML prediction for patient_id=1: Medium Risk | probs={'High Risk': 0.002, 'Low Risk': 0.003, 'Medium Risk': 0.995}
+2026-01-16 01:09:35,340 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:09:35,352 [INFO] ML prediction for patient_id=1: Medium Risk | probs={'High Risk': 0.002, 'Low Risk': 0.003, 'Medium Risk': 0.995}
+2026-01-16 01:09:39,046 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:09:39,066 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:09:42,584 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:09:42,604 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:09:45,799 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:09:45,810 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:09:49,303 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:09:49,318 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:09:52,759 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:09:52,775 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:09:56,035 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:09:56,048 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:09:59,107 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:09:59,120 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:10:02,864 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:10:02,877 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:10:06,707 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:10:06,721 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:10:10,407 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:10:10,420 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:10:13,913 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:10:13,925 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:10:17,332 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:10:17,345 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:10:20,944 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:10:20,957 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:10:24,327 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:10:24,339 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:10:27,848 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:10:27,958 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:10:31,745 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:10:31,764 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:10:35,971 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:10:35,986 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:10:40,711 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:10:40,728 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:10:44,949 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:10:44,962 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:10:48,773 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:10:48,791 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:10:53,266 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:10:53,286 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:10:57,489 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:10:57,526 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:11:01,246 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:11:01,265 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:11:04,955 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:11:04,967 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:11:08,355 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:11:08,366 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:11:12,083 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:11:12,109 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:11:16,268 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:11:16,281 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:11:20,263 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:11:20,290 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:11:24,421 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:11:24,435 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:11:27,980 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:11:27,997 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:11:32,052 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:11:32,066 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:11:35,362 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:11:35,373 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:11:39,139 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:11:39,149 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:11:42,640 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:11:42,656 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:11:46,546 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:11:46,557 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:11:50,184 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:11:50,199 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:11:54,022 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:11:54,035 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:11:57,599 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:11:57,613 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:15:40,609 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:15:40,619 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:15:44,388 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:15:44,404 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:15:48,022 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:15:48,036 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:15:51,281 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:15:51,294 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:15:55,103 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:15:55,113 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:15:58,521 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:15:58,534 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:16:02,055 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:16:02,065 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:16:05,584 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:16:05,585 [WARNING] Dangerous heart rate detected: 30.0 bpm
+2026-01-16 01:16:05,585 [INFO] Medical rule triggered for patient_id=1: Rule: Dangerous heart rate
+2026-01-16 01:16:08,935 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:16:08,946 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:16:12,506 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:16:12,519 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:16:15,705 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:16:15,721 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:16:19,292 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:16:19,305 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:16:22,879 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:16:22,879 [WARNING] Dangerous heart rate detected: 40.0 bpm
+2026-01-16 01:16:22,880 [INFO] Medical rule triggered for patient_id=1: Rule: Dangerous heart rate
+2026-01-16 01:16:26,995 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:16:27,012 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:16:30,433 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:16:30,450 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:16:34,208 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:16:34,221 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:16:37,587 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:16:37,603 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:16:41,125 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:16:41,137 [INFO] ML prediction for patient_id=1: High Risk | probs={'High Risk': 0.986, 'Low Risk': 0.014, 'Medium Risk': 0.0}
+2026-01-16 01:16:44,445 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:16:44,463 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:16:47,565 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:16:47,578 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:16:51,332 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:16:51,343 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:16:54,977 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:16:54,996 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:16:58,497 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:16:58,507 [INFO] ML prediction for patient_id=1: High Risk | probs={'High Risk': 0.821, 'Low Risk': 0.175, 'Medium Risk': 0.005}
+2026-01-16 01:17:01,984 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:17:01,998 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:17:05,451 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:17:05,467 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:17:08,995 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:17:09,008 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:17:13,130 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:17:13,145 [INFO] ML prediction for patient_id=1: High Risk | probs={'High Risk': 0.821, 'Low Risk': 0.175, 'Medium Risk': 0.005}
+2026-01-16 01:17:16,936 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:17:16,948 [INFO] ML prediction for patient_id=1: High Risk | probs={'High Risk': 0.821, 'Low Risk': 0.175, 'Medium Risk': 0.005}
+2026-01-16 01:17:19,928 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:17:19,943 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:17:23,820 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:17:23,834 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:17:27,317 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:17:27,330 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:17:31,536 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:17:31,552 [INFO] ML prediction for patient_id=1: High Risk | probs={'High Risk': 0.821, 'Low Risk': 0.175, 'Medium Risk': 0.005}
+2026-01-16 01:17:34,816 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:17:34,829 [INFO] ML prediction for patient_id=1: High Risk | probs={'High Risk': 0.821, 'Low Risk': 0.175, 'Medium Risk': 0.005}
+2026-01-16 01:17:38,194 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:17:38,207 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:17:42,228 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:17:42,239 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:17:45,039 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:17:45,058 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:17:50,043 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:17:50,064 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.004, 'Low Risk': 0.985, 'Medium Risk': 0.011}
+2026-01-16 01:17:54,131 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:17:54,147 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:17:57,945 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:17:57,955 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:18:01,553 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:18:01,569 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:18:05,189 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:18:05,202 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:18:08,842 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:18:08,857 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:18:12,277 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:18:12,290 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:18:15,044 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:18:15,068 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:18:18,166 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:18:18,184 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:18:21,656 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:18:21,671 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:43:14,203 [INFO] Starting Medical Risk Prediction API...
+2026-01-16 01:53:59,019 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 01:53:59,035 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 01:57:19,612 [INFO] Starting Medical Risk Prediction API...
+2026-01-16 02:01:28,509 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 02:01:28,533 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 02:05:46,426 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 02:05:46,446 [INFO] ML prediction for patient_id=1: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.996, 'Medium Risk': 0.003}
+2026-01-16 02:10:19,976 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 02:10:19,990 [INFO] ML prediction for patient_id=1: Medium Risk | probs={'High Risk': 0.017, 'Low Risk': 0.017, 'Medium Risk': 0.966}
+2026-01-16 02:13:37,716 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-16 02:13:37,742 [INFO] ML prediction for patient_id=1: Medium Risk | probs={'High Risk': 0.029, 'Low Risk': 0.029, 'Medium Risk': 0.943}

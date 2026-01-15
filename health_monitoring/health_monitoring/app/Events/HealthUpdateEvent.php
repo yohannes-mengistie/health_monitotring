@@ -1,6 +1,7 @@
 <?php
 namespace App\Events;
 
+use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
@@ -26,5 +27,6 @@ class HealthUpdateEvent implements ShouldBroadcast
     {
         // Broadcast only to the logged-in user's private channel
         return new PrivateChannel('user.' . $this->userId);
+        return new Channel('public-chat');
     }
 }

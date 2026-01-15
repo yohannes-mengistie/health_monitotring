@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "afb68f4311e7dde7a9c3d80e5a529d95",
+    "content-hash": "a67ae0117d85f5a15b96c684a30ddb43",
     "packages": [
         {
             "name": "brick/math",
@@ -1509,16 +1509,16 @@
         },
         {
             "name": "laravel/reverb",
-            "version": "v1.6.3",
+            "version": "v1.7.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/laravel/reverb.git",
-                "reference": "b97d21650bcfaa462dfa4735048dbc33359514e1"
+                "reference": "4300fbbc3535f5cbbdf600b00edca1e4c515bfcf"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/laravel/reverb/zipball/b97d21650bcfaa462dfa4735048dbc33359514e1",
-                "reference": "b97d21650bcfaa462dfa4735048dbc33359514e1",
+                "url": "https://api.github.com/repos/laravel/reverb/zipball/4300fbbc3535f5cbbdf600b00edca1e4c515bfcf",
+                "reference": "4300fbbc3535f5cbbdf600b00edca1e4c515bfcf",
                 "shasum": ""
             },
             "require": {
@@ -1585,9 +1585,9 @@
             ],
             "support": {
                 "issues": "https://github.com/laravel/reverb/issues",
-                "source": "https://github.com/laravel/reverb/tree/v1.6.3"
+                "source": "https://github.com/laravel/reverb/tree/v1.7.0"
             },
-            "time": "2025-11-28T20:12:49+00:00"
+            "time": "2026-01-06T16:26:25+00:00"
         },
         {
             "name": "laravel/sanctum",
@@ -9444,5 +9444,5 @@
         "php": "^8.2"
     },
     "platform-dev": {},
-    "plugin-api-version": "2.6.0"
+    "plugin-api-version": "2.9.0"
 }

@@ -27,7 +27,7 @@ class RegisterController extends Controller
             'password' => 'required|string|min:8|confirmed',
             'dob' => 'required|date',
             'gender' => 'required|in:male,female',
-            'wight' => 'required|numeric',
+            'weight' => 'required|numeric',
             'height' => 'required|numeric',
         ]);
 
@@ -39,7 +39,7 @@ class RegisterController extends Controller
             'password' => bcrypt($validatedData['password']),
             'dob' => $validatedData['dob'],
             'gender' => $validatedData['gender'],
-            'wight' => $validatedData['wight'],
+            'weight' => $validatedData['weight'],
             'height' => $validatedData['height'],
         ]);
 

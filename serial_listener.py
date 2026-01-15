@@ -7,7 +7,7 @@ from flask import Flask, request, jsonify
 # --- Configuration ---
 SERIAL_PORT = 'COM5'  
 BAUD_RATE = 9600
-LARAVEL_API_URL = "http://127.0.0.1:8000/api/sensor-data"
+LARAVEL_API_URL = "http://127.0.0.1:8000/api/health-data"
 
 # Global variable to hold the token received from the mobile phone
 current_token = None
@@ -39,47 +39,70 @@ def listen_to_sensors():
         print("--- Waiting for Mobile App to send token to port 5001... ---")
 
         while True:
-            # Only proceed if we have a token from the mobile app
             if current_token:
                 if ser.in_waiting > 0:
                     line = ser.readline().decode('utf-8').strip()
                     
+                    if not line:
+                        continue
+
                     try:
-                        # Parsing Heart Rate and Temperature (matching your ML model requirements)
-                        hr, temp = line.split(',')
-                        
+                        parts = line.split(',')
+                        if len(parts) < 2:
+                            print(f"⚠️ Too few values: {line}")
+                            continue
+
+                        hr = float(parts[0].strip())
+                        temp = float(parts[1].strip())
+
+                        # Default: treat as live unless explicitly final
+                        is_final = False
+                        if len(parts) >= 3:
+                            final_str = parts[2].strip().lower()
+                            is_final = final_str in ['true', '1', 'yes', 'final']
+
                         payload = {
-                            "heart_rate": float(hr),
-                            "body_temperature": float(temp)
+                            "heart_rate": hr,
+                            "body_temperature": temp,
+                            "device_id": "Proteus_Sensor_001",
+                            "final": is_final
                         }
 
-                        # Send to Laravel with the dynamic Bearer Token
                         headers = {
                             "Authorization": f"Bearer {current_token}",
                             "Accept": "application/json"
                         }
                         
-                        response = requests.post(LARAVEL_API_URL, json=payload, headers=headers)
+                        print(f"→ Sending {'FINAL' if is_final else 'LIVE'} → HR: {hr}, Temp: {temp}")
+
+                        response = requests.post(LARAVEL_API_URL, json=payload, headers=headers, timeout=5)
                         
                         if response.status_code == 200:
-                            print(f"✅ Sent: HR {hr}, Temp {temp} | Risk: {response.json().get('data', {}).get('analysis', {}).get('predicted_risk')}")
+                            data = response.json()
+                            risk = data.get('data', {}).get('analysis', {}).get('predicted_risk', '—')
+                            print(f"  ✓ Success | Risk: {risk}")
                         elif response.status_code == 401:
-                            print("❌ Token expired or invalid. Please re-login on mobile.")
-                            current_token = None # Reset token to wait for a new one
+                            print("❌ Token expired/invalid → waiting for new token")
+                            current_token = None
+                        elif response.status_code == 422:
+                            print(f"⚠️ Validation failed (422): {response.text}")
                         else:
-                            print(f"⚠️ Laravel Error: {response.status_code}")
+                            print(f"⚠️ Laravel responded with {response.status_code}: {response.text}")
 
-                    except ValueError:
-                        print(f"⚠️ Invalid data format from Proteus: {line}")
-            
-            time.sleep(0.1) 
+                    except ValueError as ve:
+                        print(f"⚠️ Parse error: {ve} → line was: '{line}'")
+                    except requests.RequestException as re:
+                        print(f"⚠️ Network error to Laravel: {re}")
+
+            time.sleep(0.1)
 
     except serial.SerialException as e:
         print(f"Serial Error: {e}")
     except KeyboardInterrupt:
         print("Closing Listener...")
     finally:
-        if 'ser' in locals(): ser.close()
+        if 'ser' in locals():
+            ser.close()
 
 if __name__ == "__main__":
     # Start the Flask server in a separate thread so it doesn't block the serial loop
