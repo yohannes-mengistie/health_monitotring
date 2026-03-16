@@ -21,6 +21,7 @@ class SensorController extends Controller
         $vitals = $request->validate([
             'heart_rate' => 'required|numeric',
             'body_temperature' => 'required|numeric',
+            'oxygen_saturation' => 'required|numeric',
         ]);
 
         // 3. Prepare payload using real User data
@@ -28,6 +29,9 @@ class SensorController extends Controller
         $mlPayload = [
             'heart_rate'       => $vitals['heart_rate'],
             'body_temperature' => $vitals['body_temperature'],
+            'oxygen_saturation' => $vitals['oxygen_saturation'],
+            'diastolic_bp'     => $user->diastolic_bp,
+            'systolic_bp'      => $user->systolic_bp,
             'age'              => $user->age,
             'weight_kg'        => $user->weight,
             'height_m'         => $user->height,
