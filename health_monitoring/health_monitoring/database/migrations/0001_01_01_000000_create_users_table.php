@@ -18,10 +18,12 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
-            $table->date('dob'); // Date of Birth
-            $table->enum('gender', ['male', 'female', 'other']); // Using enum for data integrity
-            $table->decimal('weight', 5, 2); // Renamed from wight, 999.99 max
-            $table->decimal('height', 5, 2); // 999.99 max (meters or cm)
+            $table->date('dob'); 
+            $table->enum('gender', ['male', 'female', 'other']); 
+            $table->decimal('weight', 5, 2); 
+            $table->decimal('height', 5, 2); 
+            $table->float('systolic_bp', 5, 2);
+            $table->float('diastolic_bp', 5, 2);
             $table->rememberToken();
             $table->timestamps();
         });

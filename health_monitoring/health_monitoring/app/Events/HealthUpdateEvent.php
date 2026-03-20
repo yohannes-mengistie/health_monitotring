@@ -16,9 +16,9 @@ class HealthUpdateEvent implements ShouldBroadcast
     public $analysis;
     public $vitals;
 
-    public function __construct($userId, $analysis, $vitals)
+    public function __construct($analysis, $vitals)
     {
-        $this->userId = $userId;
+        // $this->userId = $userId;
         $this->analysis = $analysis;
         $this->vitals = $vitals;
     }
@@ -26,7 +26,6 @@ class HealthUpdateEvent implements ShouldBroadcast
     public function broadcastOn()
     {
         // Broadcast only to the logged-in user's private channel
-        return new PrivateChannel('user.' . $this->userId);
-        return new Channel('public-chat');
+       return new Channel('public-health');
     }
 }

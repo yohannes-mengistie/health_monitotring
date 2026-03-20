@@ -1,0 +1,105 @@
+import joblib
+import pandas as pd
+import numpy as np
+import xgboost as xgb
+from fastapi import FastAPI, Request, HTTPException
+from google import genai
+import uvicorn
+
+app = FastAPI(title="Clinical AI - Final Thesis Refactor")
+
+# --- 1. SETUP ---
+GEMINI_API_KEY = "AIzaSyC1F7vS6M5UwtsGTMN4fIJEJWT7mEuiY_c"
+client = genai.Client(api_key=GEMINI_API_KEY)
+
+try:
+    # Load the Scikit-learn wrapper
+    model_wrapper = joblib.load('clinical_risk_model.pkl')
+    risk_encoder = joblib.load('risk_encoder.pkl')
+    explainer = joblib.load('shap_explainer.pkl')
+    
+    # Use the specific features you defined in your training
+    expected_features = [
+        'Heart Rate', 'Body Temperature', 'Oxygen Saturation',
+        'Systolic Blood Pressure', 'Diastolic Blood Pressure', 'Age',
+        'Gender', 'Derived_Pulse_Pressure', 'Derived_BMI', 'Derived_MAP'
+    ]
+    
+    # Extract raw booster to bypass high-level validation
+    booster = model_wrapper.get_booster() if hasattr(model_wrapper, 'get_booster') else model_wrapper
+    print("✅ System Ready. Gender mapping enabled.")
+except Exception as e:
+    print(f"❌ Load Error: {e}")
+
+@app.post("/generate-clinical-report")
+async def generate_report(request: Request):
+    try:
+        body = await request.json()
+        vitals = body.get('vitals', {})
+        lang = body.get('language', 'amharic').lower()
+
+        # --- 2. THE FIX: MANUAL ENCODING ---
+        df = pd.DataFrame([vitals])
+        
+        # Manually convert Gender string to numeric (0 or 1)
+        # This fixes the "Invalid columns: Gender: str" error
+        if 'Gender' in df.columns:
+            df['Gender'] = df['Gender'].apply(
+                lambda x: 1 if str(x).lower() in ['male', 'm', '1', '1.0'] else 0
+            )
+
+        # Reindex ensures all 10 features exist in the right order
+        df = df.reindex(columns=expected_features, fill_value=0)
+
+        # Force all columns to numeric float32
+        df = df.apply(pd.to_numeric, errors='coerce').fillna(0).astype(np.float32)
+
+        # --- 3. PREDICTION ---
+        # Using DMatrix to ensure no categorical metadata remains
+        dmatrix = xgb.DMatrix(df)
+        y_prob = booster.predict(dmatrix)
+        
+        # Get the predicted class index
+        if len(y_prob.shape) > 1:
+            pred_idx = int(np.argmax(y_prob, axis=1)[0])
+        else:
+            pred_idx = int((y_prob > 0.5)[0])
+
+        risk_label = risk_encoder.inverse_transform([pred_idx])[0]
+
+        # --- 4. SHAP EXPLAINABILITY ---
+        shap_values = explainer.shap_values(df.values)
+        shap_array = shap_values[pred_idx][0] if isinstance(shap_values, list) else shap_values[0]
+
+        # --- 5. GEMINI CLINICAL REPORT ---
+        vitals_formatted = "\n".join([f"- {k}: {v}" for k, v in vitals.items()])
+        instruction = "አስፈላጊ፡ ሙሉውን ሪፖርት በአማርኛ ፃፍ።" if lang == 'amharic' else "Write in English."
+
+        prompt = f"""
+        Role: Board-Certified Physician.
+        Patient Data:
+        {vitals_formatted}
+
+        AI Analysis: {risk_label} RISK.
+        Instruction: {instruction}
+        
+        Structure:
+        ### 🩺 Clinical Assessment (የህክምና ግምገማ)
+        ### 🎯 Key Focus Areas (ዋና ትኩረት የሚሹ ነጥቦች)
+        ### 📋 Action Plan (የአሰራር እቅድ)
+        """
+
+        response = client.models.generate_content(model='gemini-2.0-flash', contents=prompt)
+
+        return {
+            "status": "success",
+            "predicted_risk": str(risk_label).upper(),
+            "report": response.text
+        }
+
+    except Exception as e:
+        print(f"❌ Error during inference: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=9000)

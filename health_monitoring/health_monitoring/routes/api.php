@@ -13,7 +13,7 @@ Route::get('/user', function (Request $request) {
 Route::middleware('auth:sanctum')->group(function(){
     Route::post('/health-data', [SensorController::class, 'ingest']);
     Route::get('/user',[RegisterController::class, 'index']);
-    // Route::get('/health-data', [HealthMonitoringController::class, 'index']);
+    Route::get('/health/analysis', [SensorController::class, 'getDetailedAnalysis']);
 });
 
 Route::post('/register', [RegisterController::class, 'store']);

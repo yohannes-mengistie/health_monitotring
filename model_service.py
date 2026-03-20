@@ -1,195 +1,110 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+import joblib
 import pandas as pd
-import numpy as np
-import pickle
 from datetime import datetime
 import uvicorn
-import logging
+import numpy as np
 
-# =========================
-# LOGGING SETUP
-# =========================
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        logging.FileHandler("medical_api.log"),  # log to file
-        logging.StreamHandler()                  # log to console
-    ]
-)
-logger = logging.getLogger(__name__)
+app = FastAPI()
 
-app = FastAPI(title="Medical Risk Prediction API")
-
-# =========================
-# LOAD MODEL & ENCODER
-# =========================
+# --- LOAD ASSETS ---
 try:
-    with open("risk_category_model.pkl", "rb") as f:
-        saved_data = pickle.load(f)
-
-    model = saved_data["model"]
-    label_encoder = saved_data["label_encoder"]
-
-    logger.info("✅ Model & encoder loaded successfully")
-
+    model = joblib.load('clinical_risk_model.pkl')
+    encoder = joblib.load('risk_encoder.pkl')
+    expected_features = joblib.load('feature_columns.pkl')
+    print("✅ Models and Feature List loaded successfully")
 except Exception as e:
-    logger.exception("❌ Model loading failed")
-    raise RuntimeError("Model loading error") from e
+    print(f"❌ Error loading assets: {e}")
 
-# =========================
-# DATA SCHEMA
-# =========================
 class SensorData(BaseModel):
     heart_rate: float
     body_temperature: float
+    oxygen_saturation: float
+    systolic_bp: float
+    diastolic_bp: float
     age: int
-    weight_kg: float
-    height_m: float
     gender: str
+    weight_kg: float
+    height_m: float 
     patient_id: int
 
-# =========================
-# UTILITY FUNCTIONS
-# =========================
+# --- REFINED CALCULATIONS ---
+def calculate_clinical_metrics(data: SensorData):
+    # Standard Clinical Formulas
+    pulse_pressure = data.systolic_bp - data.diastolic_bp
+    map_value = round(data.diastolic_bp + (pulse_pressure / 3), 2)
+    return pulse_pressure, map_value
 def calculate_bmi(weight_kg, height_m):
-    bmi = round(weight_kg / (height_m ** 2), 2) if height_m > 0 else 0
-    logger.debug(f"Calculated BMI: {bmi}")
-    return bmi
+    bmi = weight_kg / (height_m ** 2)
+    return round(bmi, 2)
 
-# =========================
-# MEDICAL GUARDRAILS
-# =========================
-def medical_guardrails(data):
-    hr = data["Heart Rate"]
-    temp = data["Body Temperature"]
-    bmi = data["Derived_BMI"]
-    age = data["Age"]
-
-    if temp >= 40.0:
-        logger.warning(f"High fever detected: {temp}°C")
-        return "High Risk", "Rule: Extreme fever"
-
-    if hr <= 40 or hr >= 140:
-        logger.warning(f"Dangerous heart rate detected: {hr} bpm")
-        return "High Risk", "Rule: Dangerous heart rate"
-
-    if bmi >= 40:
-        logger.warning(f"Morbid obesity detected: BMI={bmi}")
-        return "High Risk", "Rule: Morbid obesity"
-
-    if age >= 65 and temp >= 38.0:
-        return "High Risk", "Rule: Elderly + fever"
-
-    if age <= 2 and (temp >= 38.5 or hr >= 160):
-        return "High Risk", "Rule: Infant danger zone"
-
-    return None, None
-
-# =========================
-# CONFIDENCE-BASED LOGIC
-# =========================
-def confidence_based_adjustment(pred_label, probs, threshold=0.60):
-    max_prob = max(probs.values())
-    if max_prob < threshold:
-        logger.info(f"Low confidence ({max_prob:.2f}) → escalated to Medium Risk")
-        return "Medium Risk", "Low confidence → escalated to Medium Risk"
-    return pred_label, "High confidence prediction"
-
-# =========================
-# EXPLAINABILITY
-# =========================
-def explain_prediction(model, X_row):
-    clf = model.named_steps["classifier"]
-    if hasattr(clf, "feature_importances_"):
-        feature_names = model.named_steps["preprocessor"].get_feature_names_out()
-        importances = clf.feature_importances_
-        explanation = sorted(
-            zip(feature_names, importances),
-            key=lambda x: x[1],
-            reverse=True
-        )[:5]
-        logger.debug(f"Feature importance explanation: {explanation}")
-        return explanation
-    return "Explainability not supported"
-
-# =========================
-# PREDICTION ENDPOINT
-# =========================
 @app.post("/predict")
-async def predict(data: SensorData, request: Request):
+async def predict(data: SensorData):
     try:
-        timestamp = datetime.now()
-        logger.info(f"Received prediction request from patient_id={data.patient_id} | {request.client.host}")
-
-        bmi = calculate_bmi(data.weight_kg, data.height_m)
-        is_male = 1 if data.gender.lower() == "male" else 0
-
-        hour = timestamp.hour
-        day_of_week = timestamp.weekday()
-        is_night = 1 if 20 <= hour or hour < 6 else 0
-
+        pp, map_val = calculate_clinical_metrics(data)
+        
+        # 1. Reconstruct features with EXACT names used in Training
+        # Note: I'm matching the 'columns_to_keep' list from your earlier training script
         input_dict = {
-            "Heart Rate": data.heart_rate,
-            "Body Temperature": data.body_temperature,
-            "Age": data.age,
-            "Weight (kg)": data.weight_kg,
-            "Height (m)": data.height_m,
-            "Derived_BMI": bmi,
-            "Hour": hour,
-            "Day_of_Week": day_of_week,
-            "Is_Night": is_night,
-            "Gender": data.gender,
+            'Heart Rate': data.heart_rate,
+            'Body Temperature': data.body_temperature,
+            'Oxygen Saturation': data.oxygen_saturation,
+            'Systolic Blood Pressure': data.systolic_bp,
+            'Diastolic Blood Pressure': data.diastolic_bp,
+            'Age': data.age,
+            'Gender': data.gender.capitalize(),
+            'Derived_Pulse_Pressure': pp,
+            'Derived_BMI': calculate_bmi(data.weight_kg, data.height_m),
+            'Derived_MAP': map_val
         }
 
-        # 1️⃣ Medical guardrails
-        rule_result, rule_note = medical_guardrails(input_dict)
-        if rule_result:
-            logger.info(f"Medical rule triggered for patient_id={data.patient_id}: {rule_note}")
-            return {
-                "patient_id": data.patient_id,
-                "predicted_risk": rule_result,
-                "bmi": bmi,
-                "note": rule_note,
-                "source": "medical_rule",
-                "alert": True
-            }
+        input_df = pd.DataFrame([input_dict])
 
-        # 2️⃣ ML prediction
-        proba = model.predict_proba(pd.DataFrame([input_dict]))[0]
-        classes = label_encoder.inverse_transform(np.arange(len(proba)))
-        probs = dict(zip(classes, np.round(proba, 3)))
-        ml_pred = classes[np.argmax(proba)]
+        # 2. Match Feature Order
+        input_df = input_df[expected_features]
 
-        logger.info(f"ML prediction for patient_id={data.patient_id}: {ml_pred} | probs={probs}")
+        # 3. Handle Categorical Types (Crucial for XGBoost)
+        for col in input_df.columns:
+            if input_df[col].dtype == 'object':
+                input_df[col] = input_df[col].astype('category')
 
-        # 3️⃣ Confidence adjustment
-        final_pred, confidence_note = confidence_based_adjustment(ml_pred, probs)
+        # 4. PREDICTION
+        # Get the integer prediction and the raw probabilities
+        pred_int = model.predict(input_df)[0]
+        probabilities = model.predict_proba(input_df)[0]
 
-        # 4️⃣ Explainability
-        explanation = explain_prediction(model, pd.DataFrame([input_dict]))
-        alert_needed = final_pred == "High Risk"
+        # Convert integer back to string (e.g., 2 -> 'High Risk')
+        risk_label = encoder.inverse_transform([pred_int])[0]
+
+        # Map probabilities to class names
+        prob_map = {str(cls): round(float(prob), 4) for cls, prob in zip(encoder.classes_, probabilities)}
+        
+        # 5. ALERT LOGIC
+        # Find index for 'High Risk' in the encoder to check its specific probability
+        # We handle case sensitivity by searching the encoder classes
+        high_risk_label = next((s for s in encoder.classes_ if 'high' in str(s).lower()), None)
+        high_risk_prob = prob_map.get(str(high_risk_label), 0) if high_risk_label else 0
+        
+        alert_needed = (risk_label == high_risk_label) or (high_risk_prob > 0.70)
 
         return {
-            "patient_id": data.patient_id,
-            "predicted_risk": final_pred,
-            "bmi": bmi,
-            "probabilities": probs,
-            "note": confidence_note,
-            "source": "ml_model",
-            "alert": alert_needed,
-            "explanation": explanation
+            'patient_id': data.patient_id,
+            'predicted_risk': str(risk_label),
+            'metrics': {
+                'pulse_pressure': pp,
+                'mean_arterial_pressure': map_val,
+                'bmi': input_dict['Derived_BMI']
+
+            },
+            'probabilities': prob_map,
+            'alert': bool(alert_needed),
+            'timestamp': datetime.now().isoformat()
         }
 
     except Exception as e:
-        logger.exception(f"Error during prediction for patient_id={data.patient_id}")
+        print(f"Prediction Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
-# =========================
-# RUN SERVER
-# =========================
 if __name__ == "__main__":
-    logger.info("Starting Medical Risk Prediction API...")
-    uvicorn.run(app, host="127.0.0.1", port=5000)
+    uvicorn.run(app, host="0.0.0.0", port=5000)

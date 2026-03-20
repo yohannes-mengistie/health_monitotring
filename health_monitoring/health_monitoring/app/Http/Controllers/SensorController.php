@@ -1,155 +1,138 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use App\Events\HealthUpdateEvent;
+use App\Models\HealthData;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Cache;
-use App\Models\HealthData;
-use Carbon\Carbon;
 
 class SensorController extends Controller
 {
     public function ingest(Request $request)
     {
+        Log::debug('incoming health data' , ['payload'=> $request->all()]);
+        // 1. Get the authenticated user (via Sanctum token)
         $user = Auth::user();
+
         if (!$user) {
+            Log::warning('Unauthenticated request', ['headers' => $request->headers->all()]);
             return response()->json(['error' => 'Unauthenticated'], 401);
         }
 
+        // 2. Validate incoming vitals from the Python Listener
         $vitals = $request->validate([
-            'heart_rate'       => 'required|numeric',
+            'heart_rate' => 'required|numeric',
             'body_temperature' => 'required|numeric',
-            'device_id'        => 'required|string',
-            // Optional: marker from Arduino when measurement completes
-            'final'            => 'sometimes|boolean',
+            'oxygen_saturation' => 'required|numeric',
         ]);
-
-        $isFinal = $request->boolean('final', false);
-        $userDeviceKey = "health_monitor_{$user->id}_{$vitals['device_id']}";
-
-        Log::info('Vitals received', [
-            'user_id' => $user->id,
-            'device_id' => $vitals['device_id'],
-            'heart_rate' => $vitals['heart_rate'],
-            'body_temperature' => $vitals['body_temperature'],
-            'is_final' => $isFinal,
-        ]);
-
-        // 1. Store the latest values temporarily (always update latest)
-        Cache::put("latest_vitals_{$userDeviceKey}", [
-            'heart_rate'       => $vitals['heart_rate'],
-            'body_temperature' => $vitals['body_temperature'],
-            'timestamp'        => now()->toDateTimeString(),
-        ], now()->addMinutes(5));
-
-        // 2. If this is NOT the final packet → just acknowledge (live preview mode)
-        if (!$isFinal) {
-            return response()->json([
-                'status' => 'received',
-                'message' => 'Live data received - waiting for measurement completion',
-            ]);
-        }
-
-        // ───────────────────────────────────────────────
-        //          FINAL MEASUREMENT RECEIVED
-        // ───────────────────────────────────────────────
-
-        // Get the final stable values (Arduino already calculated good average/estimation)
-        $finalVitals = Cache::get("latest_vitals_{$userDeviceKey}");
-
-        if (!$finalVitals) {
-            Log::warning('No recent vitals found for final processing', ['key' => $userDeviceKey]);
-            return response()->json(['error' => 'No recent measurement data'], 400);
-        }
-
-        // Prepare ML payload using final values
+        Log::info('Vitals validated', ['vitals' => $vitals, 'user_id' => $user->id]);
+        
         $mlPayload = [
-            'heart_rate'       => $finalVitals['heart_rate'],
-            'body_temperature' => $finalVitals['body_temperature'],
-            'age'              => $user->age,
-            'weight_kg'        => $user->weight,
-            'height_m'         => $user->height,
-            'gender'           => $user->gender,
-            'patient_id'       => $user->id,
+            'heart_rate'       => (float)$vitals['heart_rate'],       
+            'body_temperature' => (float)$vitals['body_temperature'],  
+            'oxygen_saturation'=> (float)$vitals['oxygen_saturation'], 
+            'systolic_bp'      => (float)$user->systolic_bp,          
+            'diastolic_bp'     => (float)$user->diastolic_bp,          
+            'age'              => (int)(date('Y') - date('Y', strtotime($user->dob))),
+            'weight_kg'        => (float)$user->weight,
+            'height_m'         => (float)$user->height,
+            'gender'           => $user->gender ?? 'M',
+            'patient_id'       => (int)$user->id
         ];
-
-        Log::info('Processing FINAL measurement - sending to ML', $mlPayload);
-
-        // Call ML service
+        Log::debug('ML Payload prepared', ['mlPayload' => $mlPayload]);
+        // 4. Call the Python ML FastAPI Service
         try {
-            $response = Http::timeout(5)->post('http://127.0.0.1:5000/predict', $mlPayload);
+            $response = Http::timeout(3)->post('http://127.0.0.1:5000/predict', $mlPayload);
 
             if ($response->failed()) {
-                throw new \Exception("ML service returned error: " . $response->status());
+                throw new \Exception("ML Service returned an error");
             }
 
             $mlResult = $response->json();
-            Log::info('ML prediction successful', $mlResult);
+            $pulsePressure = $mlResult['metrics']['pulse_pressure'] ?? null;
+            $mapValue      = $mlResult['metrics']['mean_arterial_pressure'] ?? null;
+            $bmi = $mlResult['metrics']['bmi'] ?? (
+                    $user->weight && $user->height
+                        ? round($user->weight / ($user->height * $user->height), 2)
+                        : null
+                );
         } catch (\Exception $e) {
-            Log::error('ML service failed during final processing', [
+           Log::error('ML service error', [
                 'error' => $e->getMessage(),
-                'payload' => $mlPayload
+                'payload' => $request->all()
             ]);
-
             return response()->json([
                 'error' => 'Machine Learning Service Unavailable',
                 'message' => $e->getMessage()
             ], 503);
         }
 
-        // Calculate BMI
-        $bmi = $user->weight / ($user->height ** 2);
+        // 5. Broadcast to Frontend via WebSockets
+        // We pass the User ID so the frontend can listen on a private channel
+        //broadcast(new HealthUpdateEvent($user->id, $mlResult, $vitals))->toOthers();
 
-        // Get alert from ML result
-        $alert = $mlResult['alert'] ?? 'normal';
-
-        // Store the aggregated/final measurement
         $healthData = HealthData::create([
-            'device_id'         => $vitals['device_id'],
-            'user_id'           => $user->id,
-            'heart_rate'        => $finalVitals['heart_rate'],        // final stable value
-            'body_temperature'  => $finalVitals['body_temperature'],  // final stable value
-            'age'               => $user->age,
-            'weight_kg'         => $user->weight,
-            'height_m'          => $user->height,
-            'gender'            => $user->gender,
-            'bmi_calculated'    => $bmi,
-            'predicted_risk'    => $mlResult['predicted_risk'] ?? 'Unknown',
-            'probabilities'     => json_encode($mlResult['probabilities'] ?? []),
-            'alert'             => $alert,
-            'timestamp'         => now(),
+            'heart_rate'       => (float)$vitals['heart_rate'],        
+            'body_temperature' => (float)$vitals['body_temperature'],  
+            'oxygen_saturation'=> (float)$vitals['oxygen_saturation'], 
+            'systolic_bp'      => (float)$user->systolic_bp,           
+            'diastolic_bp'     => (float)$user->diastolic_bp,          
+            'age'              => (int)(date('Y') - date('Y', strtotime($user->dob))),
+            'weight_kg'        => (float)$user->weight,
+            'height_m'         => (float)$user->height,
+            'gender'           => $user->gender ?? 'M',
+            'user_id'       => (int)$user->id,
+            'bmi'           =>  $bmi,
+            'pulse_pressure' => $pulsePressure,
+            'map'            => $mapValue,
+            'device_id'      => 1,
+            'predicted_risk' => $mlResult['predicted_risk'],
+            'probabilities'  => $mlResult['probabilities'],
+            'alert'          => $mlResult['alert']
+
         ]);
-
-        // Broadcast the final analysis to frontend
-        broadcast(new HealthUpdateEvent(
-            $user->id,
-            $mlResult,
-            [
-                'heart_rate'       => $finalVitals['heart_rate'],
-                'body_temperature' => $finalVitals['body_temperature'],
-                'device_id'        => $vitals['device_id'],
-                'is_final'         => true
-            ]
-        ))->toOthers();
-
-        // Optional: clean up cache
-        Cache::forget("latest_vitals_{$userDeviceKey}");
-
+        Log::info('HealthData saved', ['healthData_id' => $healthData->id]);
         return response()->json([
             'status' => 'success',
-            'message' => 'Measurement completed and analyzed',
             'data' => [
-                'final_vitals' => [
-                    'heart_rate'       => $finalVitals['heart_rate'],
-                    'body_temperature' => $finalVitals['body_temperature'],
-                ],
-                'analysis'         => $mlResult,
-                'record_id'        => $healthData->id
+                'vitals' => $vitals,
+                'analysis' => $mlResult
             ]
         ]);
+    }
+
+    public function getDetailedAnalysis(Request $request)
+    {
+        $user = Auth::user();
+        $latest = HealthData::where('user_id', $user->id)->latest()->first();
+
+        if (!$latest) {
+            return response()->json(['error' => 'No data found'], 404);
+        }
+
+        try {
+            $response = Http::timeout(20)->post('http://127.0.0.1:9000/generate-clinical-report', [
+                'language' => $request->get('lang', 'amharic'),
+                'vitals' => [
+                    // MUST MATCH Python expected_features EXACTLY
+                    'Heart Rate'              => (float)$latest->heart_rate,
+                    'Body Temperature'       => (float)$latest->body_temperature,
+                    'Oxygen Saturation'      => (float)$latest->oxygen_saturation,
+                    'Systolic Blood Pressure' => (float)$latest->systolic_bp,
+                    'Diastolic Blood Pressure'=> (float)$latest->diastolic_bp,
+                    'Age'                     => (int)$latest->age,
+                    'Gender'                  => $latest->gender, // e.g., "Male"
+                    'Derived_Pulse_Pressure'  => (float)$latest->pulse_pressure,
+                    'Derived_BMI'             => (float)$latest->bmi,
+                    'Derived_MAP'             => (float)$latest->map,
+                ]
+            ]);
+
+            return response()->json($response->json());
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'AI Service Unavailable: ' . $e->getMessage()], 503);
+        }
     }
 }

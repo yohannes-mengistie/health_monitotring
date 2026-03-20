@@ -1171,3 +1171,34 @@ ValueError: columns are missing: {'Gender'}
 2026-01-16 02:10:19,990 [INFO] ML prediction for patient_id=1: Medium Risk | probs={'High Risk': 0.017, 'Low Risk': 0.017, 'Medium Risk': 0.966}
 2026-01-16 02:13:37,716 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
 2026-01-16 02:13:37,742 [INFO] ML prediction for patient_id=1: Medium Risk | probs={'High Risk': 0.029, 'Low Risk': 0.029, 'Medium Risk': 0.943}
+2026-01-27 22:16:31,414 [INFO] Starting Medical Risk Prediction API...
+2026-01-27 22:32:19,178 [INFO] Received prediction request from patient_id=2 | 127.0.0.1
+2026-01-27 22:32:19,178 [WARNING] High fever detected: 41.1°C
+2026-01-27 22:32:19,179 [INFO] Medical rule triggered for patient_id=2: Rule: Extreme fever
+2026-01-27 22:34:45,711 [INFO] Received prediction request from patient_id=2 | 127.0.0.1
+2026-01-27 22:34:45,711 [WARNING] High fever detected: 41.1°C
+2026-01-27 22:34:45,712 [INFO] Medical rule triggered for patient_id=2: Rule: Extreme fever
+2026-01-27 22:36:52,870 [INFO] Received prediction request from patient_id=2 | 127.0.0.1
+2026-01-27 22:36:52,870 [WARNING] Dangerous heart rate detected: 36.0 bpm
+2026-01-27 22:36:52,871 [INFO] Medical rule triggered for patient_id=2: Rule: Dangerous heart rate
+2026-01-27 22:38:41,311 [INFO] Received prediction request from patient_id=2 | 127.0.0.1
+2026-01-27 22:38:41,362 [INFO] ML prediction for patient_id=2: High Risk | probs={'High Risk': 0.834, 'Low Risk': 0.161, 'Medium Risk': 0.006}
+2026-01-27 22:41:30,779 [INFO] Received prediction request from patient_id=2 | 127.0.0.1
+2026-01-27 22:41:30,787 [INFO] ML prediction for patient_id=2: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.995, 'Medium Risk': 0.004}
+2026-01-27 22:47:13,572 [INFO] Received prediction request from patient_id=2 | 127.0.0.1
+2026-01-27 22:47:13,581 [INFO] ML prediction for patient_id=2: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.995, 'Medium Risk': 0.004}
+2026-01-27 22:51:17,364 [INFO] Received prediction request from patient_id=2 | 127.0.0.1
+2026-01-27 22:51:17,372 [INFO] ML prediction for patient_id=2: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.995, 'Medium Risk': 0.004}
+2026-01-27 22:52:32,241 [INFO] Received prediction request from patient_id=2 | 127.0.0.1
+2026-01-27 22:52:32,249 [INFO] ML prediction for patient_id=2: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.995, 'Medium Risk': 0.004}
+2026-01-27 22:53:54,294 [INFO] Received prediction request from patient_id=2 | 127.0.0.1
+2026-01-27 22:53:54,306 [INFO] ML prediction for patient_id=2: Low Risk | probs={'High Risk': 0.001, 'Low Risk': 0.995, 'Medium Risk': 0.004}
+2026-01-27 23:25:26,719 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-27 23:25:26,750 [INFO] ML prediction for patient_id=1: High Risk | probs={'High Risk': 0.834, 'Low Risk': 0.161, 'Medium Risk': 0.006}
+2026-01-27 23:28:49,319 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-27 23:28:49,355 [INFO] ML prediction for patient_id=1: High Risk | probs={'High Risk': 0.987, 'Low Risk': 0.013, 'Medium Risk': 0.001}
+2026-01-28 09:59:08,316 [INFO] Starting Medical Risk Prediction API...
+2026-01-28 10:02:51,829 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-28 10:02:51,906 [INFO] ML prediction for patient_id=1: High Risk | probs={'High Risk': 0.987, 'Low Risk': 0.013, 'Medium Risk': 0.001}
+2026-01-28 11:53:51,853 [INFO] Received prediction request from patient_id=1 | 127.0.0.1
+2026-01-28 11:53:51,940 [INFO] ML prediction for patient_id=1: High Risk | probs={'High Risk': 0.891, 'Low Risk': 0.106, 'Medium Risk': 0.003}

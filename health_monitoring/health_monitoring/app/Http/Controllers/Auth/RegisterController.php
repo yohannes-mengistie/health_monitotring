@@ -29,6 +29,9 @@ class RegisterController extends Controller
             'gender' => 'required|in:male,female',
             'weight' => 'required|numeric',
             'height' => 'required|numeric',
+            'diastolic_bp' => 'required|numeric',
+            'systolic_bp' => 'required|numeric',
+
         ]);
 
         // Create a new user instance
@@ -41,6 +44,8 @@ class RegisterController extends Controller
             'gender' => $validatedData['gender'],
             'weight' => $validatedData['weight'],
             'height' => $validatedData['height'],
+            'diastolic_bp' => $validatedData['diastolic_bp'],
+            'systolic_bp' => $validatedData['systolic_bp'],
         ]);
 
         return response()->json([
