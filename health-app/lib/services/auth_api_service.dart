@@ -45,8 +45,9 @@ class AuthApiService {
 
   Future<String> login(
       {required String email, required String password}) async {
+    final loginUrl = Uri.parse('${ApiConfig.baseUrl}/login');
     final response = await _client.post(
-      Uri.parse('${ApiConfig.baseUrl}/login'),
+      loginUrl,
       headers: _jsonHeaders,
       body: jsonEncode({
         'email': email,
@@ -56,7 +57,12 @@ class AuthApiService {
 
     final data = _ensureSuccess(response);
     if (kDebugMode) {
+      debugPrint('[AUTH] Login URL: $loginUrl');
       debugPrint('[AUTH] Login status: ${response.statusCode}');
+      final responsePreview = response.body.length > 400
+          ? '${response.body.substring(0, 400)}...'
+          : response.body;
+      debugPrint('[AUTH] Login raw response: $responsePreview');
       debugPrint('[AUTH] Login response keys: ${data.keys.toList()}');
     }
 
