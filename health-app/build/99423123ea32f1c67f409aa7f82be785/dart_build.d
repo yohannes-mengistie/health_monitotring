@@ -1,0 +1,1 @@
+ /media/yohannes/System/Users/User/projects/serial_listner/health-app/build/99423123ea32f1c67f409aa7f82be785/dart_build_result.json:  /home/yohannes/Downloads/health-app/.dart_tool/package_config.json /home/yohannes/development/flutter/bin/cache/dart-sdk/version /media/yohannes/System/Users/User/projects/serial_listner/health-app/pubspec.yaml

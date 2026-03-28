@@ -1,0 +1,77 @@
+name: health_monitor_ai
+description: "AI-powered health monitoring system with risk analysis and personalized recommendations."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State Management
+  provider: ^6.0.0
+
+  # HTTP & API
+  http: ^1.1.0
+  dio: ^5.3.0
+
+  # Local Storage
+  shared_preferences: ^2.2.0
+  hive: ^2.2.0
+  hive_flutter: ^1.1.0
+
+  # Charts & Data Visualization
+  fl_chart: ^0.64.0
+
+  # Date & Time
+  intl: ^0.19.0
+
+  # UI & Material Design
+  cupertino_icons: ^1.0.0
+
+  # Sensors & Health Data
+  health: ^9.0.0
+  permission_handler: ^11.4.0
+
+  # Animations
+  lottie: ^2.7.0
+
+  # Biometric Authentication
+  local_auth: ^2.1.0
+
+  # Environment Configuration
+  flutter_dotenv: ^5.1.0
+
+  # Utilities
+  equatable: ^2.0.5
+  uuid: ^4.0.0
+  logger: ^2.0.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/
+    - assets/images/
+    - assets/lottie/
+    # - .env
+
+  fonts:
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+        - asset: assets/fonts/Poppins-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Poppins-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Poppins-Bold.ttf
+          weight: 700
