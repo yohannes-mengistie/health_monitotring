@@ -95,6 +95,7 @@ class SensorController extends Controller
         }
 
         $averagedVitals = $this->computeAveragedVitals($samples);
+        $heightMeters = $this->normalizeHeightToMeters((float)$user->height);
 
         // Reset window after processing one averaged batch.
         Cache::put($cacheKey, [
@@ -110,7 +111,7 @@ class SensorController extends Controller
             'diastolic_bp'     => (float)$user->diastolic_bp,
             'age'              => (int)(date('Y') - date('Y', strtotime($user->dob))),
             'weight_kg'        => (float)$user->weight,
-            'height_m'         => (float)$user->height,
+            'height_m'         => $heightMeters,
             'gender'           => $user->gender ?? 'M',
             'patient_id'       => (int)$user->id
         ];
@@ -127,8 +128,8 @@ class SensorController extends Controller
             $pulsePressure = $mlResult['metrics']['pulse_pressure'] ?? null;
             $mapValue      = $mlResult['metrics']['mean_arterial_pressure'] ?? null;
             $bmi = $mlResult['metrics']['bmi'] ?? (
-                $user->weight && $user->height
-                ? round($user->weight / ($user->height * $user->height), 2)
+                $user->weight && $heightMeters > 0
+                ? round($user->weight / ($heightMeters * $heightMeters), 2)
                 : null
             );
         } catch (\Exception $e) {
@@ -188,7 +189,7 @@ class SensorController extends Controller
             'diastolic_bp'     => (float)$user->diastolic_bp,
             'age'              => (int)(date('Y') - date('Y', strtotime($user->dob))),
             'weight_kg'        => (float)$user->weight,
-            'height_m'         => (float)$user->height,
+            'height_m'         => $heightMeters,
             'gender'           => $user->gender ?? 'M',
             'user_id'       => (int)$user->id,
             'bmi'           =>  $bmi,
@@ -233,6 +234,20 @@ class SensorController extends Controller
             'body_temperature' => round($temperatureSum / $count, 2),
             'oxygen_saturation' => round($spo2Sum / $count, 2),
         ];
+    }
+
+    private function normalizeHeightToMeters(float $rawHeight): float
+    {
+        if ($rawHeight <= 0) {
+            return 0.0;
+        }
+
+        // Mobile app profile forms send height in centimeters.
+        if ($rawHeight > 3) {
+            return round($rawHeight / 100, 2);
+        }
+
+        return round($rawHeight, 2);
     }
 
     public function getDetailedAnalysis(Request $request)

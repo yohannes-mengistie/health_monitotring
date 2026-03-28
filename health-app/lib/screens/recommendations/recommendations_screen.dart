@@ -25,6 +25,10 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
   }
 
   Future<void> _loadRecommendation() async {
+    await _loadRecommendationForLanguage(_selectedLanguageCode);
+  }
+
+  Future<void> _loadRecommendationForLanguage(String? languageCode) async {
     final authProvider = context.read<AuthProvider>();
     final healthProvider = context.read<HealthProvider>();
     final user = authProvider.currentUser;
@@ -33,15 +37,60 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
     }
 
     final localeCode = Localizations.localeOf(context).languageCode;
-    final selectedCode = _selectedLanguageCode ?? localeCode;
+    final selectedCode = languageCode ?? _selectedLanguageCode ?? localeCode;
     final language =
         selectedCode.toLowerCase().startsWith('am') ? 'amharic' : 'english';
+
+    setState(() {
+      _selectedLanguageCode = selectedCode;
+    });
 
     await healthProvider.loadClinicalRecommendation(
       userId: user.id,
       token: authProvider.authToken,
       language: language,
     );
+  }
+
+  Future<void> _showLanguagePicker() async {
+    final localeCode = Localizations.localeOf(context).languageCode;
+    final currentCode = _selectedLanguageCode ?? localeCode;
+
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.language),
+                title: const Text('English'),
+                trailing: currentCode.startsWith('en')
+                    ? const Icon(Icons.check)
+                    : null,
+                onTap: () => Navigator.pop(context, 'en'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.translate),
+                title: const Text('Amharic (አማርኛ)'),
+                trailing: currentCode.startsWith('am')
+                    ? const Icon(Icons.check)
+                    : null,
+                onTap: () => Navigator.pop(context, 'am'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (selected == null || selected == currentCode) {
+      return;
+    }
+
+    await _loadRecommendationForLanguage(selected);
   }
 
   @override
@@ -53,6 +102,13 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.language),
+            tooltip: 'Change recommendation language',
+            onPressed: _showLanguagePicker,
+          ),
+        ],
       ),
       body: Consumer<HealthProvider>(
         builder: (context, healthProvider, _) {
@@ -92,35 +148,46 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
             );
           }
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildClinicalHeader(
-                  context,
-                  healthProvider.currentAnalysis,
-                  recommendation,
+          return Stack(
+            children: [
+              SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildClinicalHeader(
+                      context,
+                      healthProvider.currentAnalysis,
+                      recommendation,
+                    ),
+                    if (parsedReport.hasMultipleLanguages) ...[
+                      const SizedBox(height: 20),
+                      _buildLanguageToggle(
+                          context, parsedReport, reportVersion.languageCode),
+                    ],
+                    const SizedBox(height: 20),
+                    ...reportVersion.sections.map(
+                      (section) => Padding(
+                        padding: const EdgeInsets.only(bottom: 14),
+                        child: _buildSectionCard(context, section),
+                      ),
+                    ),
+                    if (reportVersion.disclaimer != null) ...[
+                      const SizedBox(height: 8),
+                      _buildDisclaimerCard(context, reportVersion.disclaimer!),
+                    ],
+                    const SizedBox(height: 12),
+                  ],
                 ),
-                if (parsedReport.hasMultipleLanguages) ...[
-                  const SizedBox(height: 20),
-                  _buildLanguageToggle(
-                      context, parsedReport, reportVersion.languageCode),
-                ],
-                const SizedBox(height: 20),
-                ...reportVersion.sections.map(
-                  (section) => Padding(
-                    padding: const EdgeInsets.only(bottom: 14),
-                    child: _buildSectionCard(context, section),
-                  ),
+              ),
+              if (healthProvider.isLoading)
+                const Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: LinearProgressIndicator(minHeight: 2),
                 ),
-                if (reportVersion.disclaimer != null) ...[
-                  const SizedBox(height: 8),
-                  _buildDisclaimerCard(context, reportVersion.disclaimer!),
-                ],
-                const SizedBox(height: 12),
-              ],
-            ),
+            ],
           );
         },
       ),

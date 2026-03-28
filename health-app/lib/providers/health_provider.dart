@@ -231,10 +231,13 @@ class HealthProvider extends ChangeNotifier {
   Future<void> loadLiveVitalsAndRisk({
     required String userId,
     String? token,
+    bool showLoading = true,
   }) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
+    if (showLoading) {
+      _isLoading = true;
+      _errorMessage = null;
+      notifyListeners();
+    }
 
     try {
       if (token == null || token.isEmpty) {
@@ -259,7 +262,12 @@ class HealthProvider extends ChangeNotifier {
       _errorMessage = e.toString();
     }
 
-    _isLoading = false;
+    if (showLoading) {
+      _isLoading = false;
+      notifyListeners();
+      return;
+    }
+
     notifyListeners();
   }
 
