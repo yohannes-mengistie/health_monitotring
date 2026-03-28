@@ -17,6 +17,7 @@ class SensorController extends Controller
     private const AGG_WINDOW_SECONDS = 8;
     private const AGG_BUFFER_TTL_SECONDS = 120;
     private const LIVE_SAMPLE_TTL_SECONDS = 120;
+    private const RECOMMENDATION_CACHE_TTL_SECONDS = 1800;
 
     public function ingest(Request $request)
     {
@@ -162,7 +163,7 @@ class SensorController extends Controller
                 ],
             ];
 
-            $feedbackResponse = Http::timeout(20)->post('http://127.0.0.1:9000/generate-clinical-report', $feedbackPayload);
+            $feedbackResponse = Http::timeout(8)->post('http://127.0.0.1:9000/generate-clinical-report', $feedbackPayload);
             if ($feedbackResponse->successful()) {
                 $feedbackResult = $feedbackResponse->json();
             } else {
@@ -201,6 +202,12 @@ class SensorController extends Controller
             'alert'          => $mlResult['alert']
 
         ]);
+
+        if (is_array($feedbackResult)) {
+            $cacheKey = $this->recommendationCacheKey((int)$user->id, (int)$healthData->id, 'english');
+            Cache::put($cacheKey, $feedbackResult, now()->addSeconds(self::RECOMMENDATION_CACHE_TTL_SECONDS));
+        }
+
         Log::info('HealthData saved', ['healthData_id' => $healthData->id]);
         return response()->json([
             'status' => 'success',
@@ -264,9 +271,21 @@ class SensorController extends Controller
             return response()->json(['error' => 'No data found'], 404);
         }
 
+        $language = strtolower((string)$request->get('lang', 'amharic'));
+        $language = str_starts_with($language, 'am') ? 'amharic' : 'english';
+        $cacheKey = $this->recommendationCacheKey((int)$user->id, (int)$latest->id, $language);
+
+        $cachedReport = Cache::get($cacheKey);
+        if (is_array($cachedReport)) {
+            return response()->json([
+                ...$cachedReport,
+                'source' => 'cache',
+            ]);
+        }
+
         try {
-            $response = Http::timeout(20)->post('http://127.0.0.1:9000/generate-clinical-report', [
-                'language' => $request->get('lang', 'amharic'),
+            $response = Http::timeout(12)->post('http://127.0.0.1:9000/generate-clinical-report', [
+                'language' => $language,
                 'vitals' => [
                     // MUST MATCH Python expected_features EXACTLY
                     'Heart Rate'              => (float)$latest->heart_rate,
@@ -282,10 +301,23 @@ class SensorController extends Controller
                 ]
             ]);
 
-            return response()->json($response->json());
+            $reportPayload = $response->json();
+            if (is_array($reportPayload)) {
+                Cache::put($cacheKey, $reportPayload, now()->addSeconds(self::RECOMMENDATION_CACHE_TTL_SECONDS));
+            }
+
+            return response()->json([
+                ...$reportPayload,
+                'source' => 'fresh',
+            ]);
         } catch (\Exception $e) {
             return response()->json(['error' => 'AI Service Unavailable: ' . $e->getMessage()], 503);
         }
+    }
+
+    private function recommendationCacheKey(int $userId, int $healthDataId, string $language): string
+    {
+        return "health_recommendation:user:{$userId}:record:{$healthDataId}:lang:{$language}";
     }
 
     public function getLiveStatus(Request $request)

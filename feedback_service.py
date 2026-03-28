@@ -5,11 +5,13 @@ import xgboost as xgb
 from fastapi import FastAPI, Request, HTTPException
 from google import genai
 import uvicorn
+import os
 
 app = FastAPI(title="Clinical AI - Final Thesis Refactor")
 
 # --- 1. SETUP ---
 GEMINI_API_KEY = ""
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 try:
@@ -129,8 +131,11 @@ async def generate_report(request: Request):
         """
 
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            config=genai.types.GenerateContentConfig(temperature=0.25),
+            model=GEMINI_MODEL,
+            config=genai.types.GenerateContentConfig(
+                temperature=0.25,
+                max_output_tokens=700,
+            ),
             contents=prompt,
         )
 
