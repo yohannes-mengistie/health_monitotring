@@ -4,9 +4,9 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
-use App\Events\HealthUpdateEvent;
 use App\Models\HealthData;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use App\Models\User;
 use App\Http\Controllers\Controller;
@@ -14,10 +14,15 @@ use App\Http\Controllers\Controller;
 
 class SensorController extends Controller
 {
+    private const AGG_WINDOW_SECONDS = 8;
+    private const AGG_BUFFER_TTL_SECONDS = 120;
+    private const LIVE_SAMPLE_TTL_SECONDS = 120;
+
     public function ingest(Request $request)
     {
         Log::debug('incoming health data', ['payload' => $request->all()]);
         // 1. Get the authenticated user (via Sanctum token)
+        /** @var User|null $user */
         $user = Auth::user();
 
         if (!$user) {
@@ -33,10 +38,74 @@ class SensorController extends Controller
         ]);
         Log::info('Vitals validated', ['vitals' => $vitals, 'user_id' => $user->id]);
 
-        $mlPayload = [
-            'heart_rate'       => (float)$vitals['heart_rate'],
+        $now = now();
+
+        // Cache every raw sample immediately so live-status can update in near real-time.
+        $liveSampleKey = "health_live_sample_user_{$user->id}";
+        Cache::put($liveSampleKey, [
+            'heart_rate' => (float)$vitals['heart_rate'],
+            'spo2' => (float)$vitals['oxygen_saturation'],
+            'temperature' => (float)$vitals['body_temperature'],
+            'systolic_bp' => (float)$user->systolic_bp,
+            'diastolic_bp' => (float)$user->diastolic_bp,
+            'recorded_at' => $now->toIso8601String(),
+        ], now()->addSeconds(self::LIVE_SAMPLE_TTL_SECONDS));
+
+        $cacheKey = "health_ingest_buffer_user_{$user->id}";
+
+        $buffer = Cache::get($cacheKey, [
+            'window_started_at' => $now->toIso8601String(),
+            'samples' => [],
+        ]);
+
+        $windowStartedAt = now();
+        if (!empty($buffer['window_started_at'])) {
+            try {
+                $windowStartedAt = \Carbon\Carbon::parse($buffer['window_started_at']);
+            } catch (\Throwable $e) {
+                $windowStartedAt = $now;
+            }
+        }
+
+        $samples = is_array($buffer['samples'] ?? null) ? $buffer['samples'] : [];
+        $samples[] = [
+            'heart_rate' => (float)$vitals['heart_rate'],
             'body_temperature' => (float)$vitals['body_temperature'],
             'oxygen_saturation' => (float)$vitals['oxygen_saturation'],
+            'recorded_at' => $now->toIso8601String(),
+        ];
+
+        $elapsedSeconds = $windowStartedAt->diffInSeconds($now);
+        if ($elapsedSeconds < self::AGG_WINDOW_SECONDS) {
+            Cache::put($cacheKey, [
+                'window_started_at' => $windowStartedAt->toIso8601String(),
+                'samples' => $samples,
+            ], now()->addSeconds(self::AGG_BUFFER_TTL_SECONDS));
+
+            return response()->json([
+                'status' => 'buffering',
+                'message' => 'Sample accepted. Waiting for 8-second window to complete.',
+                'data' => [
+                    'window_seconds' => self::AGG_WINDOW_SECONDS,
+                    'elapsed_seconds' => $elapsedSeconds,
+                    'samples_collected' => count($samples),
+                    'remaining_seconds' => max(1, self::AGG_WINDOW_SECONDS - $elapsedSeconds),
+                ],
+            ]);
+        }
+
+        $averagedVitals = $this->computeAveragedVitals($samples);
+
+        // Reset window after processing one averaged batch.
+        Cache::put($cacheKey, [
+            'window_started_at' => $now->toIso8601String(),
+            'samples' => [],
+        ], now()->addSeconds(self::AGG_BUFFER_TTL_SECONDS));
+
+        $mlPayload = [
+            'heart_rate'       => $averagedVitals['heart_rate'],
+            'body_temperature' => $averagedVitals['body_temperature'],
+            'oxygen_saturation' => $averagedVitals['oxygen_saturation'],
             'systolic_bp'      => (float)$user->systolic_bp,
             'diastolic_bp'     => (float)$user->diastolic_bp,
             'age'              => (int)(date('Y') - date('Y', strtotime($user->dob))),
@@ -73,14 +142,48 @@ class SensorController extends Controller
             ], 503);
         }
 
+        $feedbackResult = null;
+        try {
+            $feedbackPayload = [
+                'language' => 'english',
+                'scenario_name' => 'Live 8-second average',
+                'vitals' => [
+                    'Heart Rate' => $averagedVitals['heart_rate'],
+                    'Body Temperature' => $averagedVitals['body_temperature'],
+                    'Oxygen Saturation' => $averagedVitals['oxygen_saturation'],
+                    'Systolic Blood Pressure' => (float)$user->systolic_bp,
+                    'Diastolic Blood Pressure' => (float)$user->diastolic_bp,
+                    'Age' => (int)(date('Y') - date('Y', strtotime($user->dob))),
+                    'Gender' => $user->gender ?? 'M',
+                    'Derived_Pulse_Pressure' => (float)($pulsePressure ?? 0),
+                    'Derived_BMI' => (float)($bmi ?? 0),
+                    'Derived_MAP' => (float)($mapValue ?? 0),
+                ],
+            ];
+
+            $feedbackResponse = Http::timeout(20)->post('http://127.0.0.1:9000/generate-clinical-report', $feedbackPayload);
+            if ($feedbackResponse->successful()) {
+                $feedbackResult = $feedbackResponse->json();
+            } else {
+                Log::warning('Feedback service returned non-success', [
+                    'status' => $feedbackResponse->status(),
+                    'body' => $feedbackResponse->body(),
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Feedback service call failed', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+
         // 5. Broadcast to Frontend via WebSockets
         // We pass the User ID so the frontend can listen on a private channel
         //broadcast(new HealthUpdateEvent($user->id, $mlResult, $vitals))->toOthers();
 
         $healthData = HealthData::create([
-            'heart_rate'       => (float)$vitals['heart_rate'],
-            'body_temperature' => (float)$vitals['body_temperature'],
-            'oxygen_saturation' => (float)$vitals['oxygen_saturation'],
+            'heart_rate'       => $averagedVitals['heart_rate'],
+            'body_temperature' => $averagedVitals['body_temperature'],
+            'oxygen_saturation' => $averagedVitals['oxygen_saturation'],
             'systolic_bp'      => (float)$user->systolic_bp,
             'diastolic_bp'     => (float)$user->diastolic_bp,
             'age'              => (int)(date('Y') - date('Y', strtotime($user->dob))),
@@ -101,15 +204,45 @@ class SensorController extends Controller
         return response()->json([
             'status' => 'success',
             'data' => [
-                'vitals' => $vitals,
-                'analysis' => $mlResult
+                'window' => [
+                    'seconds' => self::AGG_WINDOW_SECONDS,
+                    'samples_used' => count($samples),
+                ],
+                'vitals' => $averagedVitals,
+                'analysis' => $mlResult,
+                'recommendation' => $feedbackResult,
             ]
         ]);
     }
 
+    private function computeAveragedVitals(array $samples): array
+    {
+        $count = max(count($samples), 1);
+        $heartRateSum = 0.0;
+        $temperatureSum = 0.0;
+        $spo2Sum = 0.0;
+
+        foreach ($samples as $sample) {
+            $heartRateSum += (float)($sample['heart_rate'] ?? 0);
+            $temperatureSum += (float)($sample['body_temperature'] ?? 0);
+            $spo2Sum += (float)($sample['oxygen_saturation'] ?? 0);
+        }
+
+        return [
+            'heart_rate' => round($heartRateSum / $count, 2),
+            'body_temperature' => round($temperatureSum / $count, 2),
+            'oxygen_saturation' => round($spo2Sum / $count, 2),
+        ];
+    }
+
     public function getDetailedAnalysis(Request $request)
     {
+        /** @var User|null $user */
         $user = Auth::user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthenticated'], 401);
+        }
+
         $latest = HealthData::where('user_id', $user->id)->latest()->first();
 
         if (!$latest) {
@@ -142,16 +275,20 @@ class SensorController extends Controller
 
     public function getLiveStatus(Request $request)
     {
+        /** @var User|null $user */
         $user = Auth::user();
         if (!$user) {
             return response()->json(['error' => 'Unauthenticated'], 401);
         }
 
+        $liveSampleKey = "health_live_sample_user_{$user->id}";
+        $liveSample = Cache::get($liveSampleKey);
+
         $latest = HealthData::where('user_id', $user->id)
             ->latest('created_at')
             ->first();
 
-        if (!$latest) {
+        if (!$latest && !$liveSample) {
             return response()->json([
                 'status' => 'success',
                 'message' => 'No live data found yet',
@@ -159,6 +296,28 @@ class SensorController extends Controller
                     'latest_vitals' => null,
                     'risk' => null,
                     'latest_recorded_at' => null,
+                ],
+            ]);
+        }
+
+        if ($liveSample) {
+            return response()->json([
+                'status' => 'success',
+                'data' => [
+                    'latest_vitals' => [
+                        'heart_rate' => (float)($liveSample['heart_rate'] ?? 0),
+                        'spo2' => (float)($liveSample['spo2'] ?? 0),
+                        'systolic_bp' => (float)($liveSample['systolic_bp'] ?? 0),
+                        'diastolic_bp' => (float)($liveSample['diastolic_bp'] ?? 0),
+                        'temperature' => (float)($liveSample['temperature'] ?? 0),
+                    ],
+                    'risk' => [
+                        'predicted_risk' => (string)($latest->predicted_risk ?? 'unknown'),
+                        'probabilities' => $latest->probabilities ?? [],
+                        'alert' => (bool)($latest->alert ?? false),
+                    ],
+                    'latest_recorded_at' => $liveSample['recorded_at'] ?? $latest?->created_at?->toIso8601String(),
+                    'source' => 'raw_live_sample',
                 ],
             ]);
         }
@@ -179,12 +338,14 @@ class SensorController extends Controller
                     'alert' => (bool)$latest->alert,
                 ],
                 'latest_recorded_at' => $latest->created_at?->toIso8601String(),
+                'source' => 'averaged_db',
             ],
         ]);
     }
 
     public function getMetricsOverview(Request $request)
     {
+        /** @var User|null $user */
         $user = Auth::user();
         if (!$user) {
             return response()->json(['error' => 'Unauthenticated'], 401);
@@ -326,6 +487,7 @@ class SensorController extends Controller
 
     public function update(Request $request)
     {
+        /** @var User|null $user */
         $user = Auth::user();
         if (!$user) {
             return response()->json(['error' => 'Unauthenticated'], 401);
