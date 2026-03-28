@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:health_monitor_ai/config/app_theme.dart';
 import 'package:health_monitor_ai/models/analysis_model.dart';
 import 'package:health_monitor_ai/models/recommendation_model.dart';
+import 'package:health_monitor_ai/providers/auth_provider.dart';
 import 'package:health_monitor_ai/providers/health_provider.dart';
 
 class RecommendationsScreen extends StatefulWidget {
@@ -14,6 +15,34 @@ class RecommendationsScreen extends StatefulWidget {
 
 class _RecommendationsScreenState extends State<RecommendationsScreen> {
   String? _selectedLanguageCode;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadRecommendation();
+    });
+  }
+
+  Future<void> _loadRecommendation() async {
+    final authProvider = context.read<AuthProvider>();
+    final healthProvider = context.read<HealthProvider>();
+    final user = authProvider.currentUser;
+    if (user == null) {
+      return;
+    }
+
+    final localeCode = Localizations.localeOf(context).languageCode;
+    final selectedCode = _selectedLanguageCode ?? localeCode;
+    final language =
+        selectedCode.toLowerCase().startsWith('am') ? 'amharic' : 'english';
+
+    await healthProvider.loadClinicalRecommendation(
+      userId: user.id,
+      token: authProvider.authToken,
+      language: language,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,8 +57,21 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
       body: Consumer<HealthProvider>(
         builder: (context, healthProvider, _) {
           if (healthProvider.currentRecommendation == null) {
-            return const Center(
-              child: CircularProgressIndicator(),
+            if (healthProvider.isLoading) {
+              return const Center(
+                child: CircularProgressIndicator(),
+              );
+            }
+
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  healthProvider.errorMessage ??
+                      'No recommendation details available yet.',
+                  textAlign: TextAlign.center,
+                ),
+              ),
             );
           }
 

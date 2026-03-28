@@ -76,6 +76,33 @@ class HealthApiService {
         body['message']?.toString() ?? 'Unable to load live vitals data.');
   }
 
+  Future<Map<String, dynamic>> fetchDetailedAnalysis({
+    required String token,
+    required String language,
+  }) async {
+    final uri =
+        Uri.parse('${ApiConfig.baseUrl}/health/analysis?lang=$language');
+
+    final response = await _client.get(
+      uri,
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    final body = _decodeBody(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return body;
+    }
+
+    throw Exception(
+      body['error']?.toString() ??
+          body['message']?.toString() ??
+          'Unable to load clinical recommendations.',
+    );
+  }
+
   Map<String, dynamic> _decodeBody(String body) {
     if (body.isEmpty) {
       return <String, dynamic>{};

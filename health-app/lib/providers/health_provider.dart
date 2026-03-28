@@ -263,6 +263,76 @@ class HealthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> loadClinicalRecommendation({
+    required String userId,
+    String? token,
+    required String language,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      if (token == null || token.isEmpty) {
+        _currentRecommendation = null;
+        _errorMessage =
+            'Authentication token is missing. Please sign in again.';
+      } else {
+        final response = await _healthApiService.fetchDetailedAnalysis(
+          token: token,
+          language: language,
+        );
+
+        final report = _extractReportText(response);
+        if (report == null || report.trim().isEmpty) {
+          _currentRecommendation = null;
+          _errorMessage = 'Recommendation report is empty.';
+        } else {
+          final now = DateTime.now();
+          _currentRecommendation = HealthRecommendation(
+            id: 'backend_recommendation',
+            userId: userId,
+            actionPlan: report,
+            totalGoals: 0,
+            completedGoals: 0,
+            tasks: const [],
+            expectedImpact: const [],
+            medicalDisclaimer:
+                'This is an AI-generated educational summary. Please consult a qualified doctor for proper medical advice.',
+            createdAt: now,
+            updatedAt: now,
+          );
+
+          final rawRisk =
+              (response['predicted_risk']?.toString() ?? '').toLowerCase();
+          if (rawRisk.isNotEmpty && _currentAnalysis != null) {
+            _currentAnalysis = HealthAnalysis(
+              id: _currentAnalysis!.id,
+              userId: _currentAnalysis!.userId,
+              riskLevel: _mapRiskLevel(rawRisk),
+              riskScore: _currentAnalysis!.riskScore,
+              riskCategory: _currentAnalysis!.riskCategory,
+              summary: _currentAnalysis!.summary,
+              keyFinding: _currentAnalysis!.keyFinding,
+              contributingFactors: _currentAnalysis!.contributingFactors,
+              recentAlerts: _currentAnalysis!.recentAlerts,
+              analysisData: _currentAnalysis!.analysisData,
+              timestamp: _currentAnalysis!.timestamp,
+            );
+          }
+
+          _errorMessage = null;
+        }
+      }
+    } catch (e) {
+      _currentRecommendation = null;
+      _errorMessage = e.toString();
+    }
+
+    _isLoading = false;
+    notifyListeners();
+  }
+
   @Deprecated('Use loadLiveVitalsAndRisk instead.')
   Future<void> loadDashboardSummary({
     required String userId,
@@ -458,5 +528,22 @@ class HealthProvider extends ChangeNotifier {
   double _toDouble(dynamic value) {
     if (value is num) return value.toDouble();
     return double.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  String? _extractReportText(Map<String, dynamic> payload) {
+    final topLevel = payload['report'];
+    if (topLevel != null && topLevel.toString().trim().isNotEmpty) {
+      return topLevel.toString();
+    }
+
+    final data = payload['data'];
+    if (data is Map<String, dynamic>) {
+      final nested = data['report'];
+      if (nested != null && nested.toString().trim().isNotEmpty) {
+        return nested.toString();
+      }
+    }
+
+    return null;
   }
 }
