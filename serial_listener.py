@@ -84,8 +84,15 @@ def serial_to_laravel_bridge():
                     )
                     
                     if response.status_code == 200:
-                        risk = response.json().get('data', {}).get('analysis', {}).get('predicted_risk', 'Unknown')
-                        print(f"🚀 Sent to Laravel! Risk: {risk}")
+                        resp_json = response.json()
+                        status = resp_json.get('status')
+                        if status == 'buffering':
+                            samples = resp_json.get('data', {}).get('samples_collected')
+                            remaining = resp_json.get('data', {}).get('remaining_seconds')
+                            print(f"⏳ Buffering samples: {samples}, remaining ~{remaining}s")
+                        else:
+                            risk = resp_json.get('data', {}).get('analysis', {}).get('predicted_risk', 'Unknown')
+                            print(f"🚀 8s average sent! Risk: {risk}")
                     else:
                         print(f"⚠️ Laravel Error: {response.status_code} | {response.text[:300]}")
 

@@ -9,7 +9,7 @@ import uvicorn
 app = FastAPI(title="Clinical AI - Final Thesis Refactor")
 
 # --- 1. SETUP ---
-GEMINI_API_KEY = "AIzaSyC1F7vS6M5UwtsGTMN4fIJEJWT7mEuiY_c"
+GEMINI_API_KEY = ""
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 try:
@@ -37,6 +37,7 @@ async def generate_report(request: Request):
         body = await request.json()
         vitals = body.get('vitals', {})
         lang = body.get('language', 'amharic').lower()
+        scenario_name = body.get('scenario_name', 'Live Monitoring')
 
         # --- 2. THE FIX: MANUAL ENCODING ---
         df = pd.DataFrame([vitals])
@@ -69,32 +70,83 @@ async def generate_report(request: Request):
 
         # --- 4. SHAP EXPLAINABILITY ---
         shap_values = explainer.shap_values(df.values)
-        shap_array = shap_values[pred_idx][0] if isinstance(shap_values, list) else shap_values[0]
+        if isinstance(shap_values, list):
+            shap_array = shap_values[pred_idx][0]
+        elif hasattr(shap_values, 'shape') and len(shap_values.shape) == 3:
+            shap_array = shap_values[0, :, pred_idx]
+        else:
+            shap_array = shap_values[0]
+
+        feature_impacts = []
+        patient_series = df.iloc[0]
+        for i, col in enumerate(df.columns):
+            impact = float(shap_array[i])
+            value = patient_series[col]
+            direction = "↑ Increased Risk" if impact > 0 else "↓ Decreased Risk"
+            feature_impacts.append((col, value, impact, direction))
+
+        feature_impacts.sort(key=lambda x: abs(x[2]), reverse=True)
+        top_3 = feature_impacts[:3]
+        driver_text = ""
+        for col, val, impact, direction in top_3:
+            driver_text += f"- {col} ({val}) -> {direction} (SHAP: {impact:.4f})\\n"
 
         # --- 5. GEMINI CLINICAL REPORT ---
         vitals_formatted = "\n".join([f"- {k}: {v}" for k, v in vitals.items()])
-        instruction = "አስፈላጊ፡ ሙሉውን ሪፖርት በአማርኛ ፃፍ።" if lang == 'amharic' else "Write in English."
+        instruction = """
+        CRITICAL INSTRUCTION: Write the ENTIRE report in AMHARIC (አማርኛ).
+        Use professional, empathetic, and patient-friendly language.
+        """ if lang == 'amharic' else "Write the entire report in English."
 
         prompt = f"""
-        Role: Board-Certified Physician.
-        Patient Data:
+        You are a Board-Certified Internal Medicine Physician.
+
+        TEST SCENARIO: {scenario_name}
+
+        PATIENT VITALS:
         {vitals_formatted}
 
-        AI Analysis: {risk_label} RISK.
-        Instruction: {instruction}
-        
-        Structure:
-        ### 🩺 Clinical Assessment (የህክምና ግምገማ)
-        ### 🎯 Key Focus Areas (ዋና ትኩረት የሚሹ ነጥቦች)
-        ### 📋 Action Plan (የአሰራር እቅድ)
+        AI MODEL OUTPUT: {str(risk_label).upper()} RISK
+
+        TOP 3 MOST INFLUENTIAL FACTORS (according to SHAP):
+        {driver_text}
+
+        {instruction}
+
+        TASK:
+        Write a clear, professional clinical summary using this exact structure:
+
+        ### 🩺 Clinical Assessment
+        (Give 2-3 sentences explaining the overall clinical picture and why the model predicted {str(risk_label).upper()} risk. Be honest about the acute vs chronic factors.)
+
+        ### 🎯 Key Focus Areas
+        (For each of the top 3 factors, explain in simple language whether it increased or decreased the predicted risk and why it matters clinically.)
+
+        ### 📋 Recommended Actions
+        (Give 3 practical, specific, and safe recommendations based on the actual numbers. Prioritize urgent issues first.)
+
+        *Disclaimer: This is an AI-generated educational summary. Please consult a qualified doctor for proper medical advice.*
         """
 
-        response = client.models.generate_content(model='gemini-2.0-flash', contents=prompt)
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            config=genai.types.GenerateContentConfig(temperature=0.25),
+            contents=prompt,
+        )
 
         return {
             "status": "success",
             "predicted_risk": str(risk_label).upper(),
-            "report": response.text
+            "report": response.text,
+            "top_factors": [
+                {
+                    "feature": col,
+                    "value": float(val) if isinstance(val, (int, float, np.number)) else str(val),
+                    "shap": round(float(impact), 6),
+                    "direction": direction,
+                }
+                for col, val, impact, direction in top_3
+            ],
         }
 
     except Exception as e:
