@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:health_monitor_ai/config/api_config.dart';
 import 'package:http/http.dart' as http;
 
@@ -54,9 +55,17 @@ class AuthApiService {
     );
 
     final data = _ensureSuccess(response);
-    final token = data['access_token']?.toString();
+    if (kDebugMode) {
+      debugPrint('[AUTH] Login status: ${response.statusCode}');
+      debugPrint('[AUTH] Login response keys: ${data.keys.toList()}');
+    }
+
+    final token = _extractAccessToken(data);
     if (token == null || token.isEmpty) {
-      throw Exception('Login succeeded but no access token was returned.');
+      throw Exception(
+        'Login succeeded but no access token was returned. '
+        'Expected one of: access_token, token, data.access_token, data.token.',
+      );
     }
 
     return token;
@@ -170,5 +179,25 @@ class AuthApiService {
     }
 
     return 'Request failed with status code $statusCode';
+  }
+
+  String? _extractAccessToken(Map<String, dynamic> body) {
+    final topLevelToken =
+        body['access_token'] ?? body['token'] ?? body['accessToken'];
+    if (topLevelToken != null && topLevelToken.toString().isNotEmpty) {
+      return topLevelToken.toString();
+    }
+
+    final nestedData = body['data'];
+    if (nestedData is Map<String, dynamic>) {
+      final nestedToken = nestedData['access_token'] ??
+          nestedData['token'] ??
+          nestedData['accessToken'];
+      if (nestedToken != null && nestedToken.toString().isNotEmpty) {
+        return nestedToken.toString();
+      }
+    }
+
+    return null;
   }
 }
