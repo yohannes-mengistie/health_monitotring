@@ -115,6 +115,15 @@ class _DashboardScreenState extends State<DashboardScreen>
     AuthProvider authProvider,
     HealthProvider healthProvider,
   ) {
+    final hasInstruction = healthProvider.liveInstruction.trim().isNotEmpty;
+    final remainingSeconds = healthProvider.livePhaseRemainingSeconds;
+    final phase = healthProvider.livePhase;
+    final statusText = hasInstruction
+        ? (remainingSeconds > 0
+            ? '${healthProvider.liveInstruction} (${remainingSeconds}s${phase == 'measuring' ? ' left' : ''})'
+            : healthProvider.liveInstruction)
+        : 'Updated just now';
+
     return SingleChildScrollView(
       child: Column(
         children: [
@@ -266,10 +275,13 @@ class _DashboardScreenState extends State<DashboardScreen>
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
                     Text(
-                      'Updated just now',
+                      statusText,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: AppTheme.darkGray,
                           ),
+                      textAlign: TextAlign.right,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),

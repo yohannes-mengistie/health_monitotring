@@ -24,6 +24,10 @@ class HealthProvider extends ChangeNotifier {
   double _temperature = 0;
   bool _metricsUsingBackend = false;
   String _metricsPeriod = 'week';
+  Map<String, dynamic>? _metricsOverviewData;
+  String _livePhase = 'measuring';
+  int _livePhaseRemainingSeconds = 0;
+  String _liveInstruction = 'Measuring... keep your hand steady.';
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -40,6 +44,10 @@ class HealthProvider extends ChangeNotifier {
   double get temperature => _temperature;
   bool get metricsUsingBackend => _metricsUsingBackend;
   String get metricsPeriod => _metricsPeriod;
+  Map<String, dynamic>? get metricsOverviewData => _metricsOverviewData;
+  String get livePhase => _livePhase;
+  int get livePhaseRemainingSeconds => _livePhaseRemainingSeconds;
+  String get liveInstruction => _liveInstruction;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
@@ -369,6 +377,7 @@ class HealthProvider extends ChangeNotifier {
 
   void _setMetricsFromBackend(Map<String, dynamic> payload) {
     final data = payload['data'] as Map<String, dynamic>;
+    _metricsOverviewData = Map<String, dynamic>.from(data);
     final pinnedMetrics =
         List<Map<String, dynamic>>.from(data['pinned_metrics'] as List);
     final otherMetrics =
@@ -423,6 +432,7 @@ class HealthProvider extends ChangeNotifier {
     _systolicBp = fallbackVitals.systolicBP;
     _diastolicBp = fallbackVitals.diastolicBP;
     _temperature = fallbackVitals.temperature;
+    _metricsOverviewData = null;
     _metricsUsingBackend = false;
   }
 
@@ -477,6 +487,22 @@ class HealthProvider extends ChangeNotifier {
     _systolicBp = _toDouble(latestVitals['systolic_bp']).round();
     _diastolicBp = _toDouble(latestVitals['diastolic_bp']).round();
     _temperature = _toDouble(latestVitals['temperature']);
+
+    final rawPhase = data['phase']?.toString().toLowerCase();
+    _livePhase = rawPhase == 'cooldown' ? 'cooldown' : 'measuring';
+
+    final rawRemaining = _toDouble(data['remaining_seconds']).round();
+    _livePhaseRemainingSeconds = rawRemaining < 0 ? 0 : rawRemaining;
+
+    final rawInstruction = data['ui_message']?.toString().trim();
+    if (rawInstruction != null && rawInstruction.isNotEmpty) {
+      _liveInstruction = rawInstruction;
+    } else {
+      _liveInstruction = _livePhase == 'cooldown'
+          ? 'Remove your hand. Wait 3 seconds, then place it again.'
+          : 'Measuring... keep your hand steady.';
+    }
+
     _metricsUsingBackend = true;
     _errorMessage = null;
   }
@@ -484,6 +510,9 @@ class HealthProvider extends ChangeNotifier {
   void _clearDashboard() {
     _currentVitals = null;
     _currentAnalysis = null;
+    _livePhase = 'measuring';
+    _livePhaseRemainingSeconds = 0;
+    _liveInstruction = 'Measuring... keep your hand steady.';
     _metricsUsingBackend = false;
   }
 
@@ -495,6 +524,7 @@ class HealthProvider extends ChangeNotifier {
     _systolicBp = 0;
     _diastolicBp = 0;
     _temperature = 0;
+    _metricsOverviewData = null;
     _metricsUsingBackend = false;
   }
 

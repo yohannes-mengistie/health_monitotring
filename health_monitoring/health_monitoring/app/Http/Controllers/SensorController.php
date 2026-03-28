@@ -14,7 +14,8 @@ use App\Http\Controllers\Controller;
 
 class SensorController extends Controller
 {
-    private const AGG_WINDOW_SECONDS = 8;
+    private const AGG_WINDOW_SECONDS = 15;
+    private const COOLDOWN_SECONDS = 3;
     private const AGG_BUFFER_TTL_SECONDS = 120;
     private const LIVE_SAMPLE_TTL_SECONDS = 120;
     private const RECOMMENDATION_CACHE_TTL_SECONDS = 1800;
@@ -55,11 +56,58 @@ class SensorController extends Controller
         $cacheKey = "health_ingest_buffer_user_{$user->id}";
 
         $buffer = Cache::get($cacheKey, [
+            'phase' => 'measuring',
             'window_started_at' => $now->toIso8601String(),
+            'cooldown_started_at' => null,
             'samples' => [],
         ]);
 
-        $windowStartedAt = now();
+        $phase = ($buffer['phase'] ?? 'measuring') === 'cooldown' ? 'cooldown' : 'measuring';
+
+        if ($phase === 'cooldown') {
+            $cooldownStartedAt = $now;
+            if (!empty($buffer['cooldown_started_at'])) {
+                try {
+                    $cooldownStartedAt = \Carbon\Carbon::parse($buffer['cooldown_started_at']);
+                } catch (\Throwable $e) {
+                    $cooldownStartedAt = $now;
+                }
+            }
+
+            $cooldownElapsedSeconds = $cooldownStartedAt->diffInSeconds($now);
+            if ($cooldownElapsedSeconds < self::COOLDOWN_SECONDS) {
+                $cooldownRemaining = max(1, self::COOLDOWN_SECONDS - $cooldownElapsedSeconds);
+
+                Cache::put($cacheKey, [
+                    'phase' => 'cooldown',
+                    'window_started_at' => $buffer['window_started_at'] ?? $now->toIso8601String(),
+                    'cooldown_started_at' => $cooldownStartedAt->toIso8601String(),
+                    'samples' => is_array($buffer['samples'] ?? null) ? $buffer['samples'] : [],
+                ], now()->addSeconds(self::AGG_BUFFER_TTL_SECONDS));
+
+                return response()->json([
+                    'status' => 'buffering',
+                    'message' => 'Measurement complete. Remove your hand and wait before re-measuring.',
+                    'data' => [
+                        'phase' => 'cooldown',
+                        'window_seconds' => self::AGG_WINDOW_SECONDS,
+                        'cooldown_seconds' => self::COOLDOWN_SECONDS,
+                        'remaining_seconds' => $cooldownRemaining,
+                        'samples_collected' => count(is_array($buffer['samples'] ?? null) ? $buffer['samples'] : []),
+                        'ui_message' => 'Remove your hand. Wait 3 seconds, then place it again.',
+                    ],
+                ]);
+            }
+
+            $buffer = [
+                'phase' => 'measuring',
+                'window_started_at' => $now->toIso8601String(),
+                'cooldown_started_at' => null,
+                'samples' => [],
+            ];
+        }
+
+        $windowStartedAt = $now;
         if (!empty($buffer['window_started_at'])) {
             try {
                 $windowStartedAt = \Carbon\Carbon::parse($buffer['window_started_at']);
@@ -79,18 +127,23 @@ class SensorController extends Controller
         $elapsedSeconds = $windowStartedAt->diffInSeconds($now);
         if ($elapsedSeconds < self::AGG_WINDOW_SECONDS) {
             Cache::put($cacheKey, [
+                'phase' => 'measuring',
                 'window_started_at' => $windowStartedAt->toIso8601String(),
+                'cooldown_started_at' => null,
                 'samples' => $samples,
             ], now()->addSeconds(self::AGG_BUFFER_TTL_SECONDS));
 
             return response()->json([
                 'status' => 'buffering',
-                'message' => 'Sample accepted. Waiting for 8-second window to complete.',
+                'message' => 'Sample accepted. Measuring current 15-second window.',
                 'data' => [
+                    'phase' => 'measuring',
                     'window_seconds' => self::AGG_WINDOW_SECONDS,
+                    'cooldown_seconds' => self::COOLDOWN_SECONDS,
                     'elapsed_seconds' => $elapsedSeconds,
                     'samples_collected' => count($samples),
                     'remaining_seconds' => max(1, self::AGG_WINDOW_SECONDS - $elapsedSeconds),
+                    'ui_message' => 'Measuring... keep your hand steady.',
                 ],
             ]);
         }
@@ -98,9 +151,11 @@ class SensorController extends Controller
         $averagedVitals = $this->computeAveragedVitals($samples);
         $heightMeters = $this->normalizeHeightToMeters((float)$user->height);
 
-        // Reset window after processing one averaged batch.
+        // After one 15-second measurement window, switch to cooldown.
         Cache::put($cacheKey, [
-            'window_started_at' => $now->toIso8601String(),
+            'phase' => 'cooldown',
+            'window_started_at' => $windowStartedAt->toIso8601String(),
+            'cooldown_started_at' => $now->toIso8601String(),
             'samples' => [],
         ], now()->addSeconds(self::AGG_BUFFER_TTL_SECONDS));
 
@@ -148,7 +203,7 @@ class SensorController extends Controller
         try {
             $feedbackPayload = [
                 'language' => 'english',
-                'scenario_name' => 'Live 8-second average',
+                'scenario_name' => 'Live 15-second average',
                 'vitals' => [
                     'Heart Rate' => $averagedVitals['heart_rate'],
                     'Body Temperature' => $averagedVitals['body_temperature'],
@@ -215,6 +270,11 @@ class SensorController extends Controller
                 'window' => [
                     'seconds' => self::AGG_WINDOW_SECONDS,
                     'samples_used' => count($samples),
+                ],
+                'cycle' => [
+                    'phase' => 'cooldown',
+                    'remaining_seconds' => self::COOLDOWN_SECONDS,
+                    'ui_message' => 'Measurement complete. Remove your hand and wait 3 seconds.',
                 ],
                 'vitals' => $averagedVitals,
                 'analysis' => $mlResult,
@@ -330,6 +390,7 @@ class SensorController extends Controller
 
         $liveSampleKey = "health_live_sample_user_{$user->id}";
         $liveSample = Cache::get($liveSampleKey);
+        $cycleState = $this->resolveCycleState((int)$user->id);
 
         $latest = HealthData::where('user_id', $user->id)
             ->latest('created_at')
@@ -343,6 +404,7 @@ class SensorController extends Controller
                     'latest_vitals' => null,
                     'risk' => null,
                     'latest_recorded_at' => null,
+                    ...$cycleState,
                 ],
             ]);
         }
@@ -365,6 +427,7 @@ class SensorController extends Controller
                     ],
                     'latest_recorded_at' => $liveSample['recorded_at'] ?? $latest?->created_at?->toIso8601String(),
                     'source' => 'raw_live_sample',
+                    ...$cycleState,
                 ],
             ]);
         }
@@ -386,8 +449,68 @@ class SensorController extends Controller
                 ],
                 'latest_recorded_at' => $latest->created_at?->toIso8601String(),
                 'source' => 'averaged_db',
+                ...$cycleState,
             ],
         ]);
+    }
+
+    private function resolveCycleState(int $userId): array
+    {
+        $now = now();
+        $cacheKey = "health_ingest_buffer_user_{$userId}";
+
+        $buffer = Cache::get($cacheKey, [
+            'phase' => 'measuring',
+            'window_started_at' => $now->toIso8601String(),
+            'cooldown_started_at' => null,
+            'samples' => [],
+        ]);
+
+        $phase = ($buffer['phase'] ?? 'measuring') === 'cooldown' ? 'cooldown' : 'measuring';
+
+        if ($phase === 'cooldown') {
+            $cooldownStartedAt = $now;
+            if (!empty($buffer['cooldown_started_at'])) {
+                try {
+                    $cooldownStartedAt = \Carbon\Carbon::parse($buffer['cooldown_started_at']);
+                } catch (\Throwable $e) {
+                    $cooldownStartedAt = $now;
+                }
+            }
+
+            $cooldownElapsedSeconds = $cooldownStartedAt->diffInSeconds($now);
+            if ($cooldownElapsedSeconds < self::COOLDOWN_SECONDS) {
+                return [
+                    'phase' => 'cooldown',
+                    'remaining_seconds' => max(1, self::COOLDOWN_SECONDS - $cooldownElapsedSeconds),
+                    'ui_message' => 'Remove your hand. Wait 3 seconds, then place it again.',
+                ];
+            }
+
+            return [
+                'phase' => 'measuring',
+                'remaining_seconds' => self::AGG_WINDOW_SECONDS,
+                'ui_message' => 'Measuring... keep your hand steady.',
+            ];
+        }
+
+        $windowStartedAt = $now;
+        if (!empty($buffer['window_started_at'])) {
+            try {
+                $windowStartedAt = \Carbon\Carbon::parse($buffer['window_started_at']);
+            } catch (\Throwable $e) {
+                $windowStartedAt = $now;
+            }
+        }
+
+        $elapsedSeconds = $windowStartedAt->diffInSeconds($now);
+        $remainingSeconds = max(1, self::AGG_WINDOW_SECONDS - $elapsedSeconds);
+
+        return [
+            'phase' => 'measuring',
+            'remaining_seconds' => $remainingSeconds,
+            'ui_message' => 'Measuring... keep your hand steady.',
+        ];
     }
 
     public function getMetricsOverview(Request $request)
@@ -421,6 +544,13 @@ class SensorController extends Controller
                     'pinned_metrics' => [],
                     'other_metrics' => [],
                     'chart_points' => [],
+                    'health_score' => [
+                        'value' => 0,
+                        'label' => 'No Data',
+                    ],
+                    'insights' => [],
+                    'summary_statistics' => [],
+                    'range_coverage' => [],
                 ],
             ]);
         }
@@ -453,10 +583,12 @@ class SensorController extends Controller
             return round((($currentValue - $previousValue) / $previousValue) * 100, 2);
         };
 
-        $chartPoints = (clone $baseQuery)
+        $currentRows = (clone $baseQuery)
             ->whereBetween('created_at', [$currentStart, $now])
             ->orderBy('created_at')
-            ->get(['created_at', 'heart_rate', 'oxygen_saturation', 'body_temperature', 'systolic_bp', 'diastolic_bp'])
+            ->get(['created_at', 'heart_rate', 'oxygen_saturation', 'body_temperature', 'systolic_bp', 'diastolic_bp']);
+
+        $chartPoints = $currentRows
             ->map(function ($row) {
                 return [
                     'timestamp' => $row->created_at?->toIso8601String(),
@@ -469,10 +601,53 @@ class SensorController extends Controller
             })
             ->values();
 
+        $heartRateValues = $currentRows->pluck('heart_rate')->map(fn($value) => (float)$value)->values()->all();
+        $spo2Values = $currentRows->pluck('oxygen_saturation')->map(fn($value) => (float)$value)->values()->all();
+        $temperatureValues = $currentRows->pluck('body_temperature')->map(fn($value) => (float)$value)->values()->all();
+        $systolicValues = $currentRows->pluck('systolic_bp')->map(fn($value) => (float)$value)->values()->all();
+        $diastolicValues = $currentRows->pluck('diastolic_bp')->map(fn($value) => (float)$value)->values()->all();
+
+        $summaryStatistics = [
+            'heart_rate' => $this->buildMetricStatistics($heartRateValues, 'bpm'),
+            'spo2' => $this->buildMetricStatistics($spo2Values, '%'),
+            'temperature' => $this->buildMetricStatistics($temperatureValues, 'C'),
+            'systolic_bp' => $this->buildMetricStatistics($systolicValues, 'mmHg'),
+            'diastolic_bp' => $this->buildMetricStatistics($diastolicValues, 'mmHg'),
+        ];
+
+        $rangeCoverage = [
+            'heart_rate' => $this->calculateRangeCoverage($heartRateValues, 60, 100),
+            'spo2' => $this->calculateRangeCoverage($spo2Values, 95, 100),
+            'temperature' => $this->calculateRangeCoverage($temperatureValues, 36.1, 37.5),
+            'systolic_bp' => $this->calculateRangeCoverage($systolicValues, 90, 130),
+            'diastolic_bp' => $this->calculateRangeCoverage($diastolicValues, 60, 85),
+        ];
+
+        $healthScoreValue = $this->calculateHealthScore($summaryStatistics, (string)$latest->predicted_risk);
+        $healthScoreLabel = match (true) {
+            $healthScoreValue >= 90 => 'Excellent Health',
+            $healthScoreValue >= 75 => 'Good Health',
+            $healthScoreValue >= 60 => 'Fair Health',
+            default => 'Needs Attention',
+        };
+
+        $insights = $this->buildInsights(
+            $summaryStatistics,
+            $rangeCoverage,
+            $period,
+            $currentStats,
+            $previousStats
+        );
+
         return response()->json([
             'status' => 'success',
             'period' => $period,
             'data' => [
+                'health_score' => [
+                    'value' => $healthScoreValue,
+                    'label' => $healthScoreLabel,
+                ],
+                'insights' => $insights,
                 'pinned_metrics' => [
                     [
                         'key' => 'heart_rate',
@@ -515,6 +690,12 @@ class SensorController extends Controller
                     ],
                 ],
                 'chart_points' => $chartPoints,
+                'summary_statistics' => $summaryStatistics,
+                'range_coverage' => $rangeCoverage,
+                'comparison' => [
+                    'current' => $currentStats,
+                    'previous' => $previousStats,
+                ],
                 'latest_vitals' => [
                     'heart_rate' => (float)$latest->heart_rate,
                     'spo2' => (float)$latest->oxygen_saturation,
@@ -530,6 +711,164 @@ class SensorController extends Controller
                 'latest_recorded_at' => $latest->created_at?->toIso8601String(),
             ],
         ]);
+    }
+
+    private function buildMetricStatistics(array $values, string $unit): array
+    {
+        if (empty($values)) {
+            return [
+                'avg' => 0.0,
+                'min' => 0.0,
+                'max' => 0.0,
+                'std_dev' => 0.0,
+                'count' => 0,
+                'unit' => $unit,
+            ];
+        }
+
+        $count = count($values);
+        $avg = array_sum($values) / $count;
+        $variance = 0.0;
+        foreach ($values as $value) {
+            $variance += pow(((float)$value - $avg), 2);
+        }
+
+        $stdDev = sqrt($variance / $count);
+
+        return [
+            'avg' => round($avg, 2),
+            'min' => round(min($values), 2),
+            'max' => round(max($values), 2),
+            'std_dev' => round($stdDev, 2),
+            'count' => $count,
+            'unit' => $unit,
+        ];
+    }
+
+    private function calculateRangeCoverage(array $values, float $min, float $max): float
+    {
+        if (empty($values)) {
+            return 0.0;
+        }
+
+        $inRange = 0;
+        foreach ($values as $value) {
+            $asFloat = (float)$value;
+            if ($asFloat >= $min && $asFloat <= $max) {
+                $inRange++;
+            }
+        }
+
+        return round(($inRange / count($values)) * 100, 2);
+    }
+
+    private function calculateHealthScore(array $stats, string $riskLabel): int
+    {
+        $score = 100.0;
+
+        $avgHr = (float)($stats['heart_rate']['avg'] ?? 0.0);
+        $avgSpo2 = (float)($stats['spo2']['avg'] ?? 0.0);
+        $avgTemp = (float)($stats['temperature']['avg'] ?? 0.0);
+        $avgSys = (float)($stats['systolic_bp']['avg'] ?? 0.0);
+        $avgDia = (float)($stats['diastolic_bp']['avg'] ?? 0.0);
+
+        if ($avgSpo2 > 0 && $avgSpo2 < 95) {
+            $score -= (95 - $avgSpo2) * 3.5;
+        }
+
+        if ($avgHr > 0 && ($avgHr < 60 || $avgHr > 100)) {
+            $targetHr = $avgHr < 60 ? 60 : 100;
+            $score -= abs($avgHr - $targetHr) * 0.9;
+        }
+
+        if ($avgTemp > 0 && ($avgTemp < 36.1 || $avgTemp > 37.5)) {
+            $targetTemp = $avgTemp < 36.1 ? 36.1 : 37.5;
+            $score -= abs($avgTemp - $targetTemp) * 18;
+        }
+
+        if ($avgSys > 130) {
+            $score -= ($avgSys - 130) * 0.45;
+        }
+
+        if ($avgDia > 85) {
+            $score -= ($avgDia - 85) * 0.6;
+        }
+
+        $risk = strtolower($riskLabel);
+        if (str_contains($risk, 'critical')) {
+            $score -= 35;
+        } elseif (str_contains($risk, 'high')) {
+            $score -= 20;
+        } elseif (str_contains($risk, 'moderate') || str_contains($risk, 'medium')) {
+            $score -= 10;
+        }
+
+        return (int)max(0, min(100, round($score)));
+    }
+
+    private function buildInsights(
+        array $summaryStatistics,
+        array $rangeCoverage,
+        string $period,
+        array $currentStats,
+        array $previousStats
+    ): array {
+        $periodLabel = ucfirst($period);
+
+        $bestSpo2 = (float)($summaryStatistics['spo2']['max'] ?? 0.0);
+        $avgHr = (float)($summaryStatistics['heart_rate']['avg'] ?? 0.0);
+        $hrStdDev = (float)($summaryStatistics['heart_rate']['std_dev'] ?? 0.0);
+        $normalRange = round((
+            (float)($rangeCoverage['heart_rate'] ?? 0.0) +
+            (float)($rangeCoverage['spo2'] ?? 0.0) +
+            (float)($rangeCoverage['temperature'] ?? 0.0) +
+            (float)($rangeCoverage['systolic_bp'] ?? 0.0) +
+            (float)($rangeCoverage['diastolic_bp'] ?? 0.0)
+        ) / 5, 2);
+
+        $hrTrend = 0.0;
+        if ((float)$previousStats['avg_heart_rate'] !== 0.0) {
+            $hrTrend = round((((float)$currentStats['avg_heart_rate'] - (float)$previousStats['avg_heart_rate']) / (float)$previousStats['avg_heart_rate']) * 100, 2);
+        }
+
+        return [
+            [
+                'key' => 'best_spo2',
+                'title' => "Best SpO2 this {$periodLabel}",
+                'value' => round($bestSpo2, 1),
+                'unit' => '%',
+                'description' => $bestSpo2 >= 97
+                    ? 'Excellent oxygen stability in your readings.'
+                    : 'SpO2 peaked lower than ideal. Continue steady breathing and recheck sensor fit.',
+            ],
+            [
+                'key' => 'avg_heart_rate',
+                'title' => "Average Heart Rate ({$periodLabel})",
+                'value' => round($avgHr, 1),
+                'unit' => 'bpm',
+                'description' => $hrTrend <= 0
+                    ? 'Heart rate trend is stable or improving versus previous period.'
+                    : 'Heart rate trend is rising; watch hydration and stress levels.',
+            ],
+            [
+                'key' => 'time_in_normal_range',
+                'title' => 'Time in Normal Range',
+                'value' => $normalRange,
+                'unit' => '%',
+                'description' => $normalRange >= 90
+                    ? 'Most readings stayed within healthy thresholds.'
+                    : 'Some readings moved outside normal thresholds. Review trend charts below.',
+            ],
+            [
+                'key' => 'heart_rate_variability_proxy',
+                'title' => 'Heart Rate Consistency',
+                'value' => round($hrStdDev, 2),
+                'unit' => 'std dev',
+                'description' => $hrStdDev <= 6
+                    ? 'Heart rate variation is calm and consistent.'
+                    : 'Higher variation detected. Consider rest before next measurement cycle.',
+            ],
+        ];
     }
 
     public function update(Request $request)
