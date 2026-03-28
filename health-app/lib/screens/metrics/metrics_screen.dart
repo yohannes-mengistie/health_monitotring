@@ -145,7 +145,7 @@ class _MetricsScreenState extends State<MetricsScreen> {
                   child: Text(
                     healthProvider.metricsUsingBackend
                         ? 'Source: Backend API'
-                        : 'Source: Mock fallback',
+                        : 'Source: No backend data yet',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: AppTheme.darkGray,
                         ),

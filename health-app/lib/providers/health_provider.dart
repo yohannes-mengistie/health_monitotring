@@ -202,7 +202,9 @@ class HealthProvider extends ChangeNotifier {
 
     try {
       if (token == null || token.isEmpty) {
-        _setMetricsFromFallback();
+        _clearMetrics();
+        _errorMessage =
+            'Authentication token is missing. Please sign in again.';
       } else {
         final response = await _healthApiService.fetchMetricsOverview(
           token: token,
@@ -212,11 +214,14 @@ class HealthProvider extends ChangeNotifier {
         if (_isValidMetricsResponse(response)) {
           _setMetricsFromBackend(response);
         } else {
-          _setMetricsFromFallback();
+          _clearMetrics();
+          _errorMessage =
+              'Metrics endpoint returned no usable data. Waiting for live sensor readings.';
         }
       }
-    } catch (_) {
-      _setMetricsFromFallback();
+    } catch (e) {
+      _clearMetrics();
+      _errorMessage = e.toString();
     }
 
     _isLoading = false;
@@ -233,7 +238,9 @@ class HealthProvider extends ChangeNotifier {
 
     try {
       if (token == null || token.isEmpty) {
-        _setDashboardFallback(userId);
+        _clearDashboard();
+        _errorMessage =
+            'Authentication token is missing. Please sign in again.';
       } else {
         final response =
             await _healthApiService.fetchLiveVitalsAndRisk(token: token);
@@ -242,11 +249,14 @@ class HealthProvider extends ChangeNotifier {
         if (data is Map<String, dynamic> && _hasDashboardData(data)) {
           _setDashboardFromBackend(userId, data);
         } else {
-          _setDashboardFallback(userId);
+          _clearDashboard();
+          _errorMessage =
+              'No live data found yet. Start serial streaming to populate vitals.';
         }
       }
-    } catch (_) {
-      _setDashboardFallback(userId);
+    } catch (e) {
+      _clearDashboard();
+      _errorMessage = e.toString();
     }
 
     _isLoading = false;
@@ -321,6 +331,7 @@ class HealthProvider extends ChangeNotifier {
 
     _temperature = _toDouble(temperatureMetric['value']);
     _metricsUsingBackend = true;
+    _errorMessage = null;
   }
 
   void _setMetricsFromFallback() {
@@ -389,22 +400,24 @@ class HealthProvider extends ChangeNotifier {
     _diastolicBp = _toDouble(latestVitals['diastolic_bp']).round();
     _temperature = _toDouble(latestVitals['temperature']);
     _metricsUsingBackend = true;
+    _errorMessage = null;
   }
 
-  void _setDashboardFallback(String userId) {
-    if (_currentVitals == null) {
-      _currentVitals =
-          MockHealthService.generateMockVitalReading(userId: userId);
-    }
+  void _clearDashboard() {
+    _currentVitals = null;
+    _currentAnalysis = null;
+    _metricsUsingBackend = false;
+  }
 
-    _currentAnalysis ??= MockHealthService.generateMockAnalysis(
-      userId: userId,
-      recentReadings: _vitalsHistory.isEmpty
-          ? [_currentVitals!]
-          : _vitalsHistory.take(24).toList(),
-    );
-
-    _setMetricsFromFallback();
+  void _clearMetrics() {
+    _avgHeartRate = 0;
+    _avgSpo2 = 0;
+    _heartRateTrendPercent = 0;
+    _spo2TrendPercent = 0;
+    _systolicBp = 0;
+    _diastolicBp = 0;
+    _temperature = 0;
+    _metricsUsingBackend = false;
   }
 
   Map<String, double> _asStringDoubleMap(dynamic value) {

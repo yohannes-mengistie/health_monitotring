@@ -44,8 +44,7 @@ async def predict(data: SensorData):
     try:
         pp, map_val = calculate_clinical_metrics(data)
         
-        # 1. Reconstruct features with EXACT names used in Training
-        # Note: I'm matching the 'columns_to_keep' list from your earlier training script
+        # 1. Reconstruct features
         input_dict = {
             'Heart Rate': data.heart_rate,
             'Body Temperature': data.body_temperature,
@@ -64,9 +63,13 @@ async def predict(data: SensorData):
         # 2. Match Feature Order
         input_df = input_df[expected_features]
 
-        # 3. Handle Categorical Types (Crucial for XGBoost)
-        for col in input_df.columns:
-            if input_df[col].dtype == 'object':
+        # 3. Handle Categorical Types (UPDATED LOGIC)
+        # Best Practice: Explicitly convert known categorical columns
+        # Assuming 'Gender' is your only categorical column. Add others if necessary.
+        categorical_cols = ['Gender'] 
+        
+        for col in categorical_cols:
+            if col in input_df.columns:
                 input_df[col] = input_df[col].astype('category')
 
         # 4. PREDICTION
@@ -81,8 +84,6 @@ async def predict(data: SensorData):
         prob_map = {str(cls): round(float(prob), 4) for cls, prob in zip(encoder.classes_, probabilities)}
         
         # 5. ALERT LOGIC
-        # Find index for 'High Risk' in the encoder to check its specific probability
-        # We handle case sensitivity by searching the encoder classes
         high_risk_label = next((s for s in encoder.classes_ if 'high' in str(s).lower()), None)
         high_risk_prob = prob_map.get(str(high_risk_label), 0) if high_risk_label else 0
         
@@ -95,7 +96,6 @@ async def predict(data: SensorData):
                 'pulse_pressure': pp,
                 'mean_arterial_pressure': map_val,
                 'bmi': input_dict['Derived_BMI']
-
             },
             'probabilities': prob_map,
             'alert': bool(alert_needed),
