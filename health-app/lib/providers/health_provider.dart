@@ -294,10 +294,18 @@ class HealthProvider extends ChangeNotifier {
         _errorMessage =
             'Authentication token is missing. Please sign in again.';
       } else {
-        final response = await _healthApiService.fetchDetailedAnalysis(
-          token: token,
-          language: language,
-        );
+        Map<String, dynamic> response;
+        try {
+          response = await _healthApiService.fetchDetailedAnalysisV2(
+            token: token,
+          );
+        } catch (_) {
+          // Keep backward compatibility by falling back to legacy endpoint.
+          response = await _healthApiService.fetchDetailedAnalysis(
+            token: token,
+            language: language,
+          );
+        }
 
         final report = _extractReportText(response);
         if (report == null || report.trim().isEmpty) {
@@ -569,6 +577,11 @@ class HealthProvider extends ChangeNotifier {
   }
 
   String? _extractReportText(Map<String, dynamic> payload) {
+    final recommendation = payload['recommendation'];
+    if (recommendation != null && recommendation.toString().trim().isNotEmpty) {
+      return recommendation.toString();
+    }
+
     final topLevel = payload['report'];
     if (topLevel != null && topLevel.toString().trim().isNotEmpty) {
       return topLevel.toString();
@@ -576,6 +589,12 @@ class HealthProvider extends ChangeNotifier {
 
     final data = payload['data'];
     if (data is Map<String, dynamic>) {
+      final nestedRecommendation = data['recommendation'];
+      if (nestedRecommendation != null &&
+          nestedRecommendation.toString().trim().isNotEmpty) {
+        return nestedRecommendation.toString();
+      }
+
       final nested = data['report'];
       if (nested != null && nested.toString().trim().isNotEmpty) {
         return nested.toString();
