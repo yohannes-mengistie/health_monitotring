@@ -11,7 +11,7 @@ class AiRecommendationService
 
     public function __construct()
     {
-        $this->model = config('ollama.model', 'koesn/llama3-openbiollm-8b');
+        $this->model = config('ollama.model', 'llama3.2:3b');
     }
 
     /**
@@ -31,7 +31,7 @@ class AiRecommendationService
             $response = Ollama::prompt($prompt)
                 ->model($this->model)
                 ->options([
-                    'temperature' => 0.3,      // Low for more consistent medical answers
+                    'temperature' => 0.3,
                     'top_p'       => 0.9,
                     'max_tokens'  => 600,
                 ])
