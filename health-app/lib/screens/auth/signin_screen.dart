@@ -148,10 +148,10 @@ class _SignInScreenState extends State<SignInScreen> {
               ),
               const SizedBox(height: 16),
               // Remember me & Forgot password
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final rememberWidget = Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Checkbox(
                         value: _rememberMe,
@@ -166,12 +166,34 @@ class _SignInScreenState extends State<SignInScreen> {
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                     ],
-                  ),
-                  TextButton(
+                  );
+
+                  final forgotButton = TextButton(
                     onPressed: () {},
                     child: const Text('Forgot Password?'),
-                  ),
-                ],
+                  );
+
+                  if (constraints.maxWidth < 360) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        rememberWidget,
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: forgotButton,
+                        ),
+                      ],
+                    );
+                  }
+
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(child: rememberWidget),
+                      forgotButton,
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 24),
               // Biometric login option

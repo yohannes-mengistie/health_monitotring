@@ -14,46 +14,56 @@ class QuickActionsWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Quick Actions',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final itemWidth = constraints.maxWidth < 430
+              ? (constraints.maxWidth - 12) / 2
+              : (constraints.maxWidth - 24) / 3;
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: _buildQuickActionButton(
-                  context: context,
-                  icon: Icons.heart_broken,
-                  label: 'Run Check',
-                  onPressed: () {},
-                ),
+              Text(
+                'Quick Actions',
+                style: Theme.of(context).textTheme.headlineSmall,
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildQuickActionButton(
-                  context: context,
-                  icon: Icons.play_arrow,
-                  label: 'Start Session',
-                  onPressed: () {},
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildQuickActionButton(
-                  context: context,
-                  icon: Icons.note_add,
-                  label: 'Log Symptom',
-                  onPressed: () {},
-                ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  SizedBox(
+                    width: itemWidth,
+                    child: _buildQuickActionButton(
+                      context: context,
+                      icon: Icons.heart_broken,
+                      label: 'Run Check',
+                      onPressed: () {},
+                    ),
+                  ),
+                  SizedBox(
+                    width: itemWidth,
+                    child: _buildQuickActionButton(
+                      context: context,
+                      icon: Icons.play_arrow,
+                      label: 'Start Session',
+                      onPressed: () {},
+                    ),
+                  ),
+                  SizedBox(
+                    width: itemWidth,
+                    child: _buildQuickActionButton(
+                      context: context,
+                      icon: Icons.note_add,
+                      label: 'Log Symptom',
+                      onPressed: () {},
+                    ),
+                  ),
+                ],
               ),
             ],
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -85,6 +95,8 @@ class QuickActionsWidget extends StatelessWidget {
               label,
               style: Theme.of(context).textTheme.labelSmall,
               textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),

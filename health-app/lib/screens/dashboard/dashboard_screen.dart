@@ -130,126 +130,203 @@ class _DashboardScreenState extends State<DashboardScreen>
           // Header
           Padding(
             padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 380;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Column(
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Hello,',
-                          style: Theme.of(context).textTheme.bodyLarge,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Hello,',
+                                style: Theme.of(context).textTheme.bodyLarge,
+                              ),
+                              Text(
+                                authProvider.currentUser?.fullName ?? 'User',
+                                style: Theme.of(context).textTheme.displaySmall,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
                         ),
-                        Text(
-                          authProvider.currentUser?.fullName ?? 'User',
-                          style: Theme.of(context).textTheme.displaySmall,
+                        const SizedBox(width: 12),
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: AppTheme.lightGray,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Stack(
+                            alignment: Alignment.bottomRight,
+                            children: [
+                              Center(
+                                child: Text(
+                                  authProvider.currentUser?.fullName
+                                          .substring(0, 1)
+                                          .toUpperCase() ??
+                                      '?',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .displaySmall
+                                      ?.copyWith(
+                                        color: AppTheme.primaryBlue,
+                                      ),
+                                ),
+                              ),
+                              Container(
+                                width: 14,
+                                height: 14,
+                                decoration: BoxDecoration(
+                                  color: AppTheme.accentGreen,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: AppTheme.white,
+                                    width: 2,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
+                    const SizedBox(height: 16),
+                    // Device sync status
                     Container(
-                      width: 48,
-                      height: 48,
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppTheme.lightGray,
+                        color: AppTheme.primaryBlue.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppTheme.primaryBlue.withOpacity(0.3),
+                        ),
                       ),
-                      child: Stack(
-                        alignment: Alignment.bottomRight,
-                        children: [
-                          Center(
-                            child: Text(
-                              authProvider.currentUser?.fullName
-                                      .substring(0, 1)
-                                      .toUpperCase() ??
-                                  '?',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .displaySmall
-                                  ?.copyWith(
-                                    color: AppTheme.primaryBlue,
+                      child: isNarrow
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.devices_other,
+                                      color: AppTheme.primaryBlue,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'BioBand Pro',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .labelLarge
+                                                ?.copyWith(
+                                                  color: AppTheme.primaryBlue,
+                                                ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          Text(
+                                            'Connected • 84% Battery',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodySmall,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton(
+                                    onPressed: () {},
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppTheme.primaryBlue,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 8,
+                                      ),
+                                    ),
+                                    child: const Text(
+                                      'Sync Now',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
                                   ),
+                                ),
+                              ],
+                            )
+                          : Row(
+                              children: [
+                                const Icon(
+                                  Icons.devices_other,
+                                  color: AppTheme.primaryBlue,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'BioBand Pro',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelLarge
+                                            ?.copyWith(
+                                              color: AppTheme.primaryBlue,
+                                            ),
+                                      ),
+                                      Text(
+                                        'Connected • 84% Battery',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () {},
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppTheme.primaryBlue,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    'Sync Now',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                          Container(
-                            width: 14,
-                            height: 14,
-                            decoration: BoxDecoration(
-                              color: AppTheme.accentGreen,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: AppTheme.white,
-                                width: 2,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 16),
-                // Device sync status
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryBlue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: AppTheme.primaryBlue.withOpacity(0.3),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.devices_other,
-                        color: AppTheme.primaryBlue,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'BioBand Pro',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelLarge
-                                  ?.copyWith(
-                                    color: AppTheme.primaryBlue,
-                                  ),
-                            ),
-                            Text(
-                              'Connected • 84% Battery',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          ],
-                        ),
-                      ),
-                      ElevatedButton(
-                        onPressed: () {},
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primaryBlue,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                        ),
-                        child: const Text(
-                          'Sync Now',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+                );
+              },
             ),
           ),
           // Risk status card
@@ -264,92 +341,72 @@ class _DashboardScreenState extends State<DashboardScreen>
           // Live Vitals section
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth < 380) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Live Vitals',
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        statusText,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppTheme.darkGray,
+                            ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  );
+                }
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Live Vitals',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    Text(
-                      statusText,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppTheme.darkGray,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Live Vitals',
+                            style: Theme.of(context).textTheme.headlineSmall,
                           ),
-                      textAlign: TextAlign.right,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            statusText,
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: AppTheme.darkGray,
+                                    ),
+                            textAlign: TextAlign.right,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
+                    const SizedBox(height: 16),
                   ],
-                ),
-                const SizedBox(height: 16),
-              ],
+                );
+              },
             ),
           ),
           // Vitals grid
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              children: [
-                if (healthProvider.currentVitals != null) ...[
-                  Row(
-                    children: [
-                      Expanded(
-                        child: VitalCard(
-                          icon: Icons.favorite,
-                          label: 'Heart Rate',
-                          value: healthProvider.currentVitals!.heartRate
-                              .toString(),
-                          unit: 'bpm',
-                          status: healthProvider.currentVitals!
-                              .getHeartRateStatus(),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: VitalCard(
-                          icon: Icons.water_drop,
-                          label: 'SpO2',
-                          value: healthProvider.currentVitals!.spo2
-                              .toStringAsFixed(1),
-                          unit: '%',
-                          status: healthProvider.currentVitals!.getSpo2Status(),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: VitalCard(
-                          icon: Icons.favorite_border,
-                          label: 'Blood Pressure',
-                          value:
-                              '${healthProvider.currentVitals!.systolicBP}/${healthProvider.currentVitals!.diastolicBP}',
-                          unit: 'mmHg',
-                          status: healthProvider.currentVitals!.getBPStatus(),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: VitalCard(
-                          icon: Icons.thermostat,
-                          label: 'Temperature',
-                          value: healthProvider.currentVitals!.temperature
-                              .toStringAsFixed(1),
-                          unit: '°C',
-                          status: healthProvider.currentVitals!
-                              .getTemperatureStatus(),
-                        ),
-                      ),
-                    ],
-                  ),
-                ] else ...[
-                  Container(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 420;
+
+                if (healthProvider.currentVitals == null) {
+                  return Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -362,9 +419,75 @@ class _DashboardScreenState extends State<DashboardScreen>
                           'No live vitals yet. Keep the serial listener running and streaming sensor data.',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
+                  );
+                }
+
+                final cards = [
+                  VitalCard(
+                    icon: Icons.favorite,
+                    label: 'Heart Rate',
+                    value: healthProvider.currentVitals!.heartRate.toString(),
+                    unit: 'bpm',
+                    status: healthProvider.currentVitals!.getHeartRateStatus(),
                   ),
-                ],
-              ],
+                  VitalCard(
+                    icon: Icons.water_drop,
+                    label: 'SpO2',
+                    value:
+                        healthProvider.currentVitals!.spo2.toStringAsFixed(1),
+                    unit: '%',
+                    status: healthProvider.currentVitals!.getSpo2Status(),
+                  ),
+                  VitalCard(
+                    icon: Icons.favorite_border,
+                    label: 'Blood Pressure',
+                    value:
+                        '${healthProvider.currentVitals!.systolicBP}/${healthProvider.currentVitals!.diastolicBP}',
+                    unit: 'mmHg',
+                    status: healthProvider.currentVitals!.getBPStatus(),
+                  ),
+                  VitalCard(
+                    icon: Icons.thermostat,
+                    label: 'Temperature',
+                    value: healthProvider.currentVitals!.temperature
+                        .toStringAsFixed(1),
+                    unit: '°C',
+                    status:
+                        healthProvider.currentVitals!.getTemperatureStatus(),
+                  ),
+                ];
+
+                if (isNarrow) {
+                  return Column(
+                    children: [
+                      for (var i = 0; i < cards.length; i++) ...[
+                        cards[i],
+                        if (i != cards.length - 1) const SizedBox(height: 12),
+                      ],
+                    ],
+                  );
+                }
+
+                return Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(child: cards[0]),
+                        const SizedBox(width: 12),
+                        Expanded(child: cards[1]),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(child: cards[2]),
+                        const SizedBox(width: 12),
+                        Expanded(child: cards[3]),
+                      ],
+                    ),
+                  ],
+                );
+              },
             ),
           ),
           const SizedBox(height: 24),

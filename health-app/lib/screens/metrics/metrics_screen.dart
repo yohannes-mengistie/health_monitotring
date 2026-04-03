@@ -122,38 +122,80 @@ class _MetricsScreenState extends State<MetricsScreen> {
                     const SizedBox(height: 10),
                     _buildSummaryGrid(summary),
                     const SizedBox(height: 22),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                      'Export will be available in the next update.'),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        if (constraints.maxWidth < 380) {
+                          return Column(
+                            children: [
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  onPressed: () {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                            'Export will be available in the next update.'),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.download_rounded),
+                                  label: const Text('Export Report'),
                                 ),
-                              );
-                            },
-                            icon: const Icon(Icons.download_rounded),
-                            label: const Text('Export Report'),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                      'Full history view will be added next.'),
+                              ),
+                              const SizedBox(height: 10),
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  onPressed: () {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                            'Full history view will be added next.'),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.history_toggle_off),
+                                  label: const Text('View Full History'),
                                 ),
-                              );
-                            },
-                            icon: const Icon(Icons.history_toggle_off),
-                            label: const Text('View Full History'),
-                          ),
-                        ),
-                      ],
+                              ),
+                            ],
+                          );
+                        }
+
+                        return Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                          'Export will be available in the next update.'),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.download_rounded),
+                                label: const Text('Export Report'),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                          'Full history view will be added next.'),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.history_toggle_off),
+                                label: const Text('View Full History'),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
                     const SizedBox(height: 8),
                   ],
@@ -227,57 +269,85 @@ class _MetricsScreenState extends State<MetricsScreen> {
       ),
       child: Row(
         children: [
-          SizedBox(
-            height: 96,
-            width: 96,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                CircularProgressIndicator(
-                  value: score / 100,
-                  strokeWidth: 9,
-                  backgroundColor: AppTheme.white.withOpacity(0.18),
-                  valueColor:
-                      const AlwaysStoppedAnimation<Color>(AppTheme.white),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isNarrow = constraints.maxWidth < 360;
+
+              final gauge = SizedBox(
+                height: 96,
+                width: 96,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      value: score / 100,
+                      strokeWidth: 9,
+                      backgroundColor: AppTheme.white.withOpacity(0.18),
+                      valueColor:
+                          const AlwaysStoppedAnimation<Color>(AppTheme.white),
+                    ),
+                    Text(
+                      '${score.round()}',
+                      style:
+                          Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                color: AppTheme.white,
+                                fontWeight: FontWeight.w800,
+                              ),
+                    ),
+                  ],
                 ),
-                Text(
-                  '${score.round()}',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        color: AppTheme.white,
-                        fontWeight: FontWeight.w800,
-                      ),
+              );
+
+              final content = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Overall Health Score',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: AppTheme.white.withOpacity(0.92),
+                        ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '$label • $_selectedPeriod',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: AppTheme.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Trend-focused view for stable clinical interpretation.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppTheme.white.withOpacity(0.82),
+                        ),
+                  ),
+                ],
+              );
+
+              if (isNarrow) {
+                return Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      gauge,
+                      const SizedBox(height: 14),
+                      content,
+                    ],
+                  ),
+                );
+              }
+
+              return Expanded(
+                child: Row(
+                  children: [
+                    gauge,
+                    const SizedBox(width: 16),
+                    Expanded(child: content),
+                  ],
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Overall Health Score',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: AppTheme.white.withOpacity(0.92),
-                      ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '$label • $_selectedPeriod',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppTheme.white,
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Trend-focused view for stable clinical interpretation.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppTheme.white.withOpacity(0.82),
-                      ),
-                ),
-              ],
-            ),
+              );
+            },
           ),
         ],
       ),
@@ -474,15 +544,16 @@ class _MetricsScreenState extends State<MetricsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          Wrap(
+            spacing: 10,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Text(
                 title,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
-              const Spacer(),
               _legendDot(leftColor, leftLabel),
-              const SizedBox(width: 10),
               _legendDot(rightColor, rightLabel),
             ],
           ),

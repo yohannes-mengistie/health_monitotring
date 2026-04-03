@@ -48,18 +48,43 @@ class RecentAlertsWidget extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Recent Alerts',
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-              TextButton(
-                onPressed: () {},
-                child: const Text('View All'),
-              ),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth < 340) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Recent Alerts',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton(
+                        onPressed: () {},
+                        child: const Text('View All'),
+                      ),
+                    ),
+                  ],
+                );
+              }
+
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Recent Alerts',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () {},
+                    child: const Text('View All'),
+                  ),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 12),
           Column(

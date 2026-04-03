@@ -99,6 +99,8 @@ class VitalCard extends StatelessWidget {
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: AppTheme.darkGray,
                 ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 8),
           RichText(

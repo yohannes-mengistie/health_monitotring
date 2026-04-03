@@ -122,10 +122,50 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
-                child: Text(
-                  healthProvider.errorMessage ??
-                      'No recommendation details available yet.',
-                  textAlign: TextAlign.center,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: AppTheme.white,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: AppTheme.mediumGray),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryBlue.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(
+                          Icons.medical_services_outlined,
+                          color: AppTheme.primaryBlue,
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        'No Clinical Brief Yet',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        healthProvider.errorMessage ??
+                            'No recommendation details available yet.',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: 14),
+                      ElevatedButton.icon(
+                        onPressed: _loadRecommendation,
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Try Again'),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );
@@ -150,34 +190,77 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
 
           return Stack(
             children: [
-              SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildClinicalHeader(
-                      context,
-                      healthProvider.currentAnalysis,
-                      recommendation,
-                    ),
-                    if (parsedReport.hasMultipleLanguages) ...[
-                      const SizedBox(height: 20),
-                      _buildLanguageToggle(
-                          context, parsedReport, reportVersion.languageCode),
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      AppTheme.primaryBlue.withOpacity(0.08),
+                      AppTheme.lightGray,
+                      AppTheme.lightGray,
                     ],
-                    const SizedBox(height: 20),
-                    ...reportVersion.sections.map(
-                      (section) => Padding(
-                        padding: const EdgeInsets.only(bottom: 14),
-                        child: _buildSectionCard(context, section),
+                  ),
+                ),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildClinicalHeader(
+                        context,
+                        healthProvider.currentAnalysis,
+                        recommendation,
                       ),
-                    ),
-                    if (reportVersion.disclaimer != null) ...[
-                      const SizedBox(height: 8),
-                      _buildDisclaimerCard(context, reportVersion.disclaimer!),
+                      if (parsedReport.hasMultipleLanguages) ...[
+                        const SizedBox(height: 16),
+                        _buildLanguageToggle(
+                          context,
+                          parsedReport,
+                          reportVersion.languageCode,
+                        ),
+                      ],
+                      const SizedBox(height: 16),
+                      _buildReportSummaryCard(
+                        context: context,
+                        recommendation: recommendation,
+                        sectionCount: reportVersion.sections.length,
+                        itemCount: _contentItemCount(reportVersion),
+                        languageCode: reportVersion.languageCode,
+                      ),
+                      const SizedBox(height: 18),
+                      Row(
+                        children: [
+                          Container(
+                            width: 4,
+                            height: 18,
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryBlue,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Clinical Action Plan',
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      ...reportVersion.sections.map(
+                        (section) => Padding(
+                          padding: const EdgeInsets.only(bottom: 14),
+                          child: _buildSectionCard(context, section),
+                        ),
+                      ),
+                      if (reportVersion.disclaimer != null) ...[
+                        const SizedBox(height: 8),
+                        _buildDisclaimerCard(
+                            context, reportVersion.disclaimer!),
+                      ],
+                      const SizedBox(height: 12),
                     ],
-                    const SizedBox(height: 12),
-                  ],
+                  ),
                 ),
               ),
               if (healthProvider.isLoading)
@@ -227,17 +310,17 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            spacing: 10,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Expanded(
-                child: Text(
-                  'AI Clinical Brief',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        color: AppTheme.white,
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
+              Text(
+                'AI Clinical Brief',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: AppTheme.white,
+                      fontWeight: FontWeight.w700,
+                    ),
               ),
               Container(
                 padding:
@@ -259,42 +342,79 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
           ),
           const SizedBox(height: 10),
           Text(
-            'Structured recommendation based on your latest analysis.',
+            'Structured and safety-first recommendation based on your latest analysis.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: AppTheme.white.withOpacity(0.9),
                 ),
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: AppTheme.white.withOpacity(0.16),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  'Updated ${_formatDate(recommendation.updatedAt)}',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AppTheme.white,
-                        fontWeight: FontWeight.w500,
+          LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth < 360) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
                       ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: LinearProgressIndicator(
-                  value: recommendation.completionPercentage / 100,
-                  minHeight: 7,
-                  backgroundColor: AppTheme.white.withOpacity(0.18),
-                  valueColor:
-                      const AlwaysStoppedAnimation(AppTheme.accentGreen),
-                ),
-              ),
-            ],
+                      decoration: BoxDecoration(
+                        color: AppTheme.white.withOpacity(0.16),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        'Updated ${_formatDate(recommendation.updatedAt)}',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: AppTheme.white,
+                              fontWeight: FontWeight.w500,
+                            ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    LinearProgressIndicator(
+                      value: recommendation.completionPercentage / 100,
+                      minHeight: 7,
+                      backgroundColor: AppTheme.white.withOpacity(0.18),
+                      valueColor:
+                          const AlwaysStoppedAnimation(AppTheme.accentGreen),
+                    ),
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppTheme.white.withOpacity(0.16),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      'Updated ${_formatDate(recommendation.updatedAt)}',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: AppTheme.white,
+                            fontWeight: FontWeight.w500,
+                          ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: LinearProgressIndicator(
+                      value: recommendation.completionPercentage / 100,
+                      minHeight: 7,
+                      backgroundColor: AppTheme.white.withOpacity(0.18),
+                      valueColor:
+                          const AlwaysStoppedAnimation(AppTheme.accentGreen),
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -346,7 +466,7 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
       decoration: BoxDecoration(
         color: AppTheme.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.mediumGray),
+        border: Border.all(color: accent.withOpacity(0.22)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -450,6 +570,78 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
     );
   }
 
+  Widget _buildReportSummaryCard({
+    required BuildContext context,
+    required HealthRecommendation recommendation,
+    required int sectionCount,
+    required int itemCount,
+    required String languageCode,
+  }) {
+    final languageLabel =
+        languageCode.toLowerCase().startsWith('am') ? 'Amharic' : 'English';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.mediumGray),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryBlue.withOpacity(0.05),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Wrap(
+        spacing: 10,
+        runSpacing: 10,
+        children: [
+          _summaryPill(
+              context, Icons.article_outlined, '$sectionCount Sections'),
+          _summaryPill(
+              context, Icons.checklist_rounded, '$itemCount Action Items'),
+          _summaryPill(
+            context,
+            Icons.language,
+            languageLabel,
+          ),
+          _summaryPill(
+            context,
+            Icons.schedule,
+            'Updated ${_formatDate(recommendation.updatedAt)}',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _summaryPill(BuildContext context, IconData icon, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppTheme.lightGray,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppTheme.mediumGray),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: AppTheme.primaryBlue),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: AppTheme.veryDarkGray,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDisclaimerCard(
     BuildContext context,
     String text,
@@ -531,6 +723,16 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
     final hour = dateTime.hour.toString().padLeft(2, '0');
     final minute = dateTime.minute.toString().padLeft(2, '0');
     return '$month/$day $hour:$minute';
+  }
+
+  int _contentItemCount(_ReportVersion report) {
+    var count = 0;
+    for (final section in report.sections) {
+      count += section.paragraphs.length;
+      count += section.bullets.length;
+      count += section.numberedItems.length;
+    }
+    return count;
   }
 }
 
