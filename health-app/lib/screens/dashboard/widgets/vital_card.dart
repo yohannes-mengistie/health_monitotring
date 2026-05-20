@@ -26,6 +26,8 @@ class VitalCard extends StatelessWidget {
         return AppTheme.accentOrange;
       case VitalStatus.critical:
         return AppTheme.accentRed;
+      case VitalStatus.unknown:
+        return AppTheme.darkGray;
     }
   }
 
@@ -37,6 +39,8 @@ class VitalCard extends StatelessWidget {
         return AppTheme.accentOrange.withOpacity(0.1);
       case VitalStatus.critical:
         return AppTheme.accentRed.withOpacity(0.1);
+      case VitalStatus.unknown:
+        return AppTheme.darkGray.withOpacity(0.08);
     }
   }
 
@@ -48,6 +52,8 @@ class VitalCard extends StatelessWidget {
         return 'Elevated';
       case VitalStatus.critical:
         return 'Critical';
+      case VitalStatus.unknown:
+        return 'No data';
     }
   }
 

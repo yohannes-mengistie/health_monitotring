@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:health_monitor_ai/config/app_theme.dart';
 import 'package:health_monitor_ai/providers/auth_provider.dart';
+import 'package:health_monitor_ai/providers/health_provider.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({Key? key}) : super(key: key);
@@ -21,12 +22,18 @@ class _SignInScreenState extends State<SignInScreen> {
   @override
   void initState() {
     super.initState();
-    _emailController = TextEditingController(text: 'test@example.com');
-    _passwordController = TextEditingController(text: 'password123');
+    _emailController = TextEditingController(text: '');
+    _passwordController = TextEditingController(text: '');
     _createAccountRecognizer = TapGestureRecognizer()
       ..onTap = () {
         Navigator.pushNamed(context, '/signup');
       };
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<AuthProvider>().loadBiometricPreference();
+      }
+    });
+    context.read<HealthProvider>().resetUserState();
   }
 
   @override
@@ -72,17 +79,17 @@ class _SignInScreenState extends State<SignInScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () {},
-                      icon: const Icon(Icons.apple),
-                      label: const Text('Apple'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                    ),
-                  ),
+                  // const SizedBox(width: 12),
+                  // Expanded(
+                  //   child: OutlinedButton.icon(
+                  //     onPressed: () {},
+                  //     icon: const Icon(Icons.apple),
+                  //     label: const Text('Apple'),
+                  //     style: OutlinedButton.styleFrom(
+                  //       padding: const EdgeInsets.symmetric(vertical: 12),
+                  //     ),
+                  //   ),
+                  // ),
                 ],
               ),
               const SizedBox(height: 24),
@@ -195,44 +202,107 @@ class _SignInScreenState extends State<SignInScreen> {
                   );
                 },
               ),
-              const SizedBox(height: 24),
-              // Biometric login option
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppTheme.lightGray,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.fingerprint,
-                      color: AppTheme.primaryBlue,
-                      size: 24,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Enable Biometric Login',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          Text(
-                            'Use fingerprint for faster access',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-                    ),
-                    Switch(
-                      value: false,
-                      onChanged: (value) {},
-                    ),
-                  ],
-                ),
-              ),
+              // const SizedBox(height: 24),
+              // // Biometric login option
+              // Container(
+              //   padding: const EdgeInsets.all(16),
+              //   decoration: BoxDecoration(
+              //     color: AppTheme.lightGray,
+              //     borderRadius: BorderRadius.circular(12),
+              //   ),
+              //   child: Row(
+              //     children: [
+              //       const Icon(
+              //         Icons.fingerprint,
+              //         color: AppTheme.primaryBlue,
+              //         size: 24,
+              //       ),
+              //       const SizedBox(width: 12),
+              //       Expanded(
+              //         child: Column(
+              //           crossAxisAlignment: CrossAxisAlignment.start,
+              //           children: [
+              //             Text(
+              //               'Enable Biometric Login',
+              //               style: Theme.of(context).textTheme.titleMedium,
+              //             ),
+              //             Text(
+              //               'Use fingerprint or face ID for faster access',
+              //               style: Theme.of(context).textTheme.bodySmall,
+              //             ),
+              //           ],
+              //         ),
+              //       ),
+              //       Consumer<AuthProvider>(
+              //         builder: (context, authProvider, _) {
+              //           return Switch(
+              //             value: authProvider.biometricEnabled,
+              //             onChanged: authProvider.isLoading
+              //                 ? null
+              //                 : (value) async {
+              //                     try {
+              //                       await authProvider.setBiometricEnabled(
+              //                         value,
+              //                       );
+              //                     } catch (e) {
+              //                       if (mounted) {
+              //                         ScaffoldMessenger.of(context)
+              //                             .showSnackBar(
+              //                           SnackBar(
+              //                             content: Text(
+              //                               'Biometric setup failed: $e',
+              //                             ),
+              //                           ),
+              //                         );
+              //                       }
+              //                     }
+              //                   },
+              //           );
+              //         },
+              //       ),
+              //     ],
+              //   ),
+              // ),
+              // const SizedBox(height: 12),
+              // Consumer<AuthProvider>(
+              //   builder: (context, authProvider, _) {
+              //     return SizedBox(
+              //       width: double.infinity,
+              //       child: OutlinedButton.icon(
+              //         onPressed: authProvider.isLoading ||
+              //                 !authProvider.biometricEnabled
+              //             ? null
+              //             : () async {
+              //                 try {
+              //                   await authProvider.loginWithBiometrics();
+              //                   context.read<HealthProvider>().resetUserState();
+              //                   if (mounted) {
+              //                     Navigator.pushReplacementNamed(
+              //                       context,
+              //                       '/dashboard',
+              //                     );
+              //                   }
+              //                 } catch (e) {
+              //                   if (mounted) {
+              //                     ScaffoldMessenger.of(context).showSnackBar(
+              //                       SnackBar(
+              //                         content: Text(
+              //                           'Biometric sign in failed: $e',
+              //                         ),
+              //                       ),
+              //                     );
+              //                   }
+              //                 }
+              //               },
+              //         icon: const Icon(Icons.fingerprint),
+              //         label: const Text('Use Biometric Login'),
+              //         style: OutlinedButton.styleFrom(
+              //           padding: const EdgeInsets.symmetric(vertical: 12),
+              //         ),
+              //       ),
+              //     );
+              //   },
+              // ),
               const SizedBox(height: 24),
               // Sign in button
               Consumer<AuthProvider>(
@@ -248,6 +318,7 @@ class _SignInScreenState extends State<SignInScreen> {
                                   _emailController.text,
                                   _passwordController.text,
                                 );
+                                context.read<HealthProvider>().resetUserState();
                                 if (mounted) {
                                   Navigator.pushReplacementNamed(
                                     context,

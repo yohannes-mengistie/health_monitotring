@@ -101,11 +101,13 @@ async def generate_report(request: Request):
         """ if lang == 'amharic' else "Write the entire report in English."
 
         prompt = f"""
-        You are a Board-Certified Internal Medicine Physician.
+        You are a Board-Certified Internal Medicine Physician acting as a personal assistant for the current user.
+        Always address the user directly as "you" and "your".
+        Never use "the patient" or "patients" in the report body.
 
         TEST SCENARIO: {scenario_name}
 
-        PATIENT VITALS:
+        YOUR CURRENT VITALS:
         {vitals_formatted}
 
         AI MODEL OUTPUT: {str(risk_label).upper()} RISK

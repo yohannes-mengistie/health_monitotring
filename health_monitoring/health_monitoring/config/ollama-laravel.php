@@ -1,7 +1,13 @@
 <?php
 
+$headers = [];
+$apiKey = env('OLLAMA_API_KEY');
+if (!empty($apiKey)) {
+    $headers['Authorization'] = 'Bearer ' . $apiKey;
+}
+
 return [
-    'model' => env('OLLAMA_MODEL', 'llama3.2:3b'),        // ← Changed to lighter model
+    'model' => env('OLLAMA_MODEL', 'llama3.2:latest'),
 
     'url' => env('OLLAMA_URL', 'http://127.0.0.1:11434'),
 
@@ -22,7 +28,5 @@ return [
         'timeout' => env('OLLAMA_CONNECTION_TIMEOUT', 300),
     ],
 
-    'headers' => [
-        'Authorization' => 'Bearer ' . env('OLLAMA_API_KEY'),
-    ],
+    'headers' => $headers,
 ];

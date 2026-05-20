@@ -8,6 +8,8 @@ use App\Models\HealthData;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use App\Models\User;
 use App\Http\Controllers\Controller;
 
@@ -37,8 +39,17 @@ class SensorController extends Controller
             'heart_rate' => 'required|numeric',
             'body_temperature' => 'required|numeric',
             'oxygen_saturation' => 'required|numeric',
+            'systolic_bp' => 'sometimes|numeric|min:40|max:300',
+            'diastolic_bp' => 'sometimes|numeric|min:30|max:250',
         ]);
         Log::info('Vitals validated', ['vitals' => $vitals, 'user_id' => $user->id]);
+
+        $systolicBp = array_key_exists('systolic_bp', $vitals)
+            ? (float)$vitals['systolic_bp']
+            : (float)$user->systolic_bp;
+        $diastolicBp = array_key_exists('diastolic_bp', $vitals)
+            ? (float)$vitals['diastolic_bp']
+            : (float)$user->diastolic_bp;
 
         $now = now();
 
@@ -48,8 +59,8 @@ class SensorController extends Controller
             'heart_rate' => (float)$vitals['heart_rate'],
             'spo2' => (float)$vitals['oxygen_saturation'],
             'temperature' => (float)$vitals['body_temperature'],
-            'systolic_bp' => (float)$user->systolic_bp,
-            'diastolic_bp' => (float)$user->diastolic_bp,
+            'systolic_bp' => $systolicBp,
+            'diastolic_bp' => $diastolicBp,
             'recorded_at' => $now->toIso8601String(),
         ], now()->addSeconds(self::LIVE_SAMPLE_TTL_SECONDS));
 
@@ -163,8 +174,8 @@ class SensorController extends Controller
             'heart_rate'       => $averagedVitals['heart_rate'],
             'body_temperature' => $averagedVitals['body_temperature'],
             'oxygen_saturation' => $averagedVitals['oxygen_saturation'],
-            'systolic_bp'      => (float)$user->systolic_bp,
-            'diastolic_bp'     => (float)$user->diastolic_bp,
+            'systolic_bp'      => $systolicBp,
+            'diastolic_bp'     => $diastolicBp,
             'age'              => (int)(date('Y') - date('Y', strtotime($user->dob))),
             'weight_kg'        => (float)$user->weight,
             'height_m'         => $heightMeters,
@@ -208,8 +219,8 @@ class SensorController extends Controller
                     'Heart Rate' => $averagedVitals['heart_rate'],
                     'Body Temperature' => $averagedVitals['body_temperature'],
                     'Oxygen Saturation' => $averagedVitals['oxygen_saturation'],
-                    'Systolic Blood Pressure' => (float)$user->systolic_bp,
-                    'Diastolic Blood Pressure' => (float)$user->diastolic_bp,
+                    'Systolic Blood Pressure' => $systolicBp,
+                    'Diastolic Blood Pressure' => $diastolicBp,
                     'Age' => (int)(date('Y') - date('Y', strtotime($user->dob))),
                     'Gender' => $user->gender ?? 'M',
                     'Derived_Pulse_Pressure' => (float)($pulsePressure ?? 0),
@@ -233,6 +244,26 @@ class SensorController extends Controller
             ]);
         }
 
+        $finalRisk = $this->applyWhoSafetyLayer(
+            (string)($mlResult['predicted_risk'] ?? 'unknown'),
+            $averagedVitals,
+            $systolicBp,
+            $diastolicBp,
+            (float)($mlResult['metrics']['mean_arterial_pressure'] ?? 0)
+        );
+
+        if ($finalRisk !== ($mlResult['predicted_risk'] ?? null)) {
+            Log::info('WHO safety layer adjusted risk', [
+                'user_id' => $user->id,
+                'model_risk' => $mlResult['predicted_risk'] ?? null,
+                'final_risk' => $finalRisk,
+                'vitals' => $averagedVitals,
+                'systolic_bp' => $systolicBp,
+                'diastolic_bp' => $diastolicBp,
+                'map' => $mlResult['metrics']['mean_arterial_pressure'] ?? null,
+            ]);
+        }
+
         // 5. Broadcast to Frontend via WebSockets
         // We pass the User ID so the frontend can listen on a private channel
         //broadcast(new HealthUpdateEvent($user->id, $mlResult, $vitals))->toOthers();
@@ -241,8 +272,8 @@ class SensorController extends Controller
             'heart_rate'       => $averagedVitals['heart_rate'],
             'body_temperature' => $averagedVitals['body_temperature'],
             'oxygen_saturation' => $averagedVitals['oxygen_saturation'],
-            'systolic_bp'      => (float)$user->systolic_bp,
-            'diastolic_bp'     => (float)$user->diastolic_bp,
+            'systolic_bp'      => $systolicBp,
+            'diastolic_bp'     => $diastolicBp,
             'age'              => (int)(date('Y') - date('Y', strtotime($user->dob))),
             'weight_kg'        => (float)$user->weight,
             'height_m'         => $heightMeters,
@@ -252,9 +283,9 @@ class SensorController extends Controller
             'pulse_pressure' => $pulsePressure,
             'map'            => $mapValue,
             'device_id'      => 1,
-            'predicted_risk' => $mlResult['predicted_risk'],
+            'predicted_risk' => $finalRisk,
             'probabilities'  => $mlResult['probabilities'],
-            'alert'          => $mlResult['alert']
+            'alert'          => $finalRisk === 'High Risk'
 
         ]);
 
@@ -277,10 +308,51 @@ class SensorController extends Controller
                     'ui_message' => 'Measurement complete. Remove your hand and wait 3 seconds.',
                 ],
                 'vitals' => $averagedVitals,
-                'analysis' => $mlResult,
+                'analysis' => [
+                    ...$mlResult,
+                    'model_predicted_risk' => $mlResult['predicted_risk'] ?? null,
+                    'predicted_risk' => $finalRisk,
+                ],
                 'recommendation' => $feedbackResult,
             ]
         ]);
+    }
+
+    private function applyWhoSafetyLayer(
+        string $modelRisk,
+        array $averagedVitals,
+        float $systolicBp,
+        float $diastolicBp,
+        float $mapValue
+    ): string {
+        $heartRate = (float)($averagedVitals['heart_rate'] ?? 0);
+        $temperature = (float)($averagedVitals['body_temperature'] ?? 0);
+        $spo2 = (float)($averagedVitals['oxygen_saturation'] ?? 0);
+
+        $redFlags = (
+            $spo2 < 92 ||
+            $systolicBp < 90 ||
+            $mapValue < 65 ||
+            $temperature >= 38.5 ||
+            $temperature <= 35.0 ||
+            $heartRate < 45 ||
+            $heartRate > 120
+        );
+
+        $stable = (
+            $spo2 >= 95 &&
+            $heartRate >= 60 && $heartRate <= 100 &&
+            $systolicBp >= 100 && $systolicBp <= 140 &&
+            $diastolicBp >= 60 && $diastolicBp <= 90 &&
+            $temperature >= 36.0 && $temperature <= 37.5 &&
+            $mapValue >= 70
+        );
+
+        if (strtolower($modelRisk) === 'high risk' && $stable && !$redFlags) {
+            return 'Moderate Risk';
+        }
+
+        return $modelRisk;
     }
 
     private function computeAveragedVitals(array $samples): array
@@ -533,8 +605,12 @@ class SensorController extends Controller
         $currentStart = $now->copy()->subDays($days);
         $previousStart = $currentStart->copy()->subDays($days);
 
+        $timeColumn = Schema::hasColumn('health_data', 'timestamp')
+            ? 'timestamp'
+            : 'created_at';
+
         $baseQuery = HealthData::where('user_id', $user->id);
-        $latest = (clone $baseQuery)->latest('created_at')->first();
+        $latest = (clone $baseQuery)->orderByDesc($timeColumn)->first();
         if (!$latest) {
             return response()->json([
                 'status' => 'success',
@@ -556,9 +632,9 @@ class SensorController extends Controller
         }
 
         $current = (clone $baseQuery)
-            ->whereBetween('created_at', [$currentStart, $now]);
+            ->whereBetween($timeColumn, [$currentStart, $now]);
         $previous = (clone $baseQuery)
-            ->whereBetween('created_at', [$previousStart, $currentStart]);
+            ->whereBetween($timeColumn, [$previousStart, $currentStart]);
 
         $currentStats = [
             'avg_heart_rate' => (float)$current->avg('heart_rate'),
@@ -584,8 +660,8 @@ class SensorController extends Controller
         };
 
         $currentRows = (clone $baseQuery)
-            ->whereBetween('created_at', [$currentStart, $now])
-            ->orderBy('created_at')
+            ->whereBetween($timeColumn, [$currentStart, $now])
+            ->orderBy($timeColumn)
             ->get(['created_at', 'heart_rate', 'oxygen_saturation', 'body_temperature', 'systolic_bp', 'diastolic_bp']);
 
         $chartPoints = $currentRows
@@ -709,6 +785,72 @@ class SensorController extends Controller
                     'alert' => (bool)$latest->alert,
                 ],
                 'latest_recorded_at' => $latest->created_at?->toIso8601String(),
+            ],
+        ]);
+    }
+
+    public function getMetricsHistory(Request $request)
+    {
+        /** @var User|null $user */
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthenticated'], 401);
+        }
+
+        $period = strtolower((string)$request->query('period', 'week'));
+        $days = match ($period) {
+            'day' => 1,
+            'month' => 30,
+            'year' => 365,
+            default => 7,
+        };
+
+        $now = now();
+        $start = $now->copy()->subDays($days);
+
+        $timeColumn = Schema::hasColumn('health_data', 'timestamp')
+            ? 'timestamp'
+            : 'created_at';
+
+        $rows = HealthData::where('user_id', $user->id)
+            ->whereBetween($timeColumn, [$start, $now])
+            ->where(function ($query) {
+                $query
+                    ->where('heart_rate', '>', 0)
+                    ->orWhere('oxygen_saturation', '>', 0)
+                    ->orWhere('body_temperature', '>', 0)
+                    ->orWhere('systolic_bp', '>', 0)
+                    ->orWhere('diastolic_bp', '>', 0);
+            })
+            ->orderByDesc($timeColumn)
+            ->get([
+                'created_at',
+                'heart_rate',
+                'oxygen_saturation',
+                'body_temperature',
+                'systolic_bp',
+                'diastolic_bp',
+            ]);
+
+        $points = $rows->map(function ($row) {
+            return [
+                'timestamp' => $row->created_at?->toIso8601String(),
+                'heart_rate' => (float)$row->heart_rate,
+                'spo2' => (float)$row->oxygen_saturation,
+                'temperature' => (float)$row->body_temperature,
+                'systolic_bp' => (float)$row->systolic_bp,
+                'diastolic_bp' => (float)$row->diastolic_bp,
+            ];
+        })->values();
+
+        return response()->json([
+            'status' => 'success',
+            'period' => $period,
+            'data' => [
+                'chart_points' => $points,
+                'total' => $rows->count(),
+                'range_start' => $start->toIso8601String(),
+                'range_end' => $now->toIso8601String(),
             ],
         ]);
     }

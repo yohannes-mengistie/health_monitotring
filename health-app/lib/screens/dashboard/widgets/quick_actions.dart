@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:health_monitor_ai/config/app_theme.dart';
 import 'package:health_monitor_ai/models/analysis_model.dart';
+import 'package:health_monitor_ai/providers/auth_provider.dart';
+import 'package:health_monitor_ai/providers/health_provider.dart';
 
 class QuickActionsWidget extends StatelessWidget {
   final HealthAnalysis analysis;
@@ -38,7 +41,7 @@ class QuickActionsWidget extends StatelessWidget {
                       context: context,
                       icon: Icons.heart_broken,
                       label: 'Run Check',
-                      onPressed: () {},
+                      onPressed: () => _runCheck(context),
                     ),
                   ),
                   SizedBox(
@@ -47,7 +50,7 @@ class QuickActionsWidget extends StatelessWidget {
                       context: context,
                       icon: Icons.play_arrow,
                       label: 'Start Session',
-                      onPressed: () {},
+                      onPressed: () => _startSession(context),
                     ),
                   ),
                   SizedBox(
@@ -56,7 +59,7 @@ class QuickActionsWidget extends StatelessWidget {
                       context: context,
                       icon: Icons.note_add,
                       label: 'Log Symptom',
-                      onPressed: () {},
+                      onPressed: () => _logSymptom(context),
                     ),
                   ),
                 ],
@@ -65,6 +68,37 @@ class QuickActionsWidget extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+
+  Future<void> _runCheck(BuildContext context) async {
+    final authProvider = context.read<AuthProvider>();
+    final healthProvider = context.read<HealthProvider>();
+    final user = authProvider.currentUser;
+    final token = authProvider.authToken;
+    if (user == null || token == null || token.isEmpty) {
+      _showMessage(context, 'Sign in to run a health check.');
+      return;
+    }
+
+    await healthProvider.loadLiveVitalsAndRisk(
+      userId: user.id,
+      token: token,
+      showLoading: true,
+    );
+  }
+
+  void _startSession(BuildContext context) {
+    Navigator.pushNamed(context, '/metrics');
+  }
+
+  void _logSymptom(BuildContext context) {
+    Navigator.pushNamed(context, '/recommendations');
+  }
+
+  void _showMessage(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
     );
   }
 

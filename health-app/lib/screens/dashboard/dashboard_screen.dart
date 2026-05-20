@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:health_monitor_ai/config/app_theme.dart';
 import 'package:health_monitor_ai/providers/auth_provider.dart';
 import 'package:health_monitor_ai/providers/health_provider.dart';
+import 'package:health_monitor_ai/models/vitals_model.dart';
 import 'package:health_monitor_ai/screens/dashboard/widgets/vital_card.dart';
 import 'package:health_monitor_ai/screens/dashboard/widgets/risk_status_card.dart';
 import 'package:health_monitor_ai/screens/dashboard/widgets/quick_actions.dart';
@@ -88,33 +89,23 @@ class _DashboardScreenState extends State<DashboardScreen>
   Widget _buildContent() {
     return Consumer2<AuthProvider, HealthProvider>(
       builder: (context, authProvider, healthProvider, _) {
-        if (healthProvider.isLoading) {
-          if (healthProvider.currentVitals != null) {
-            return SingleChildScrollView(
-              child: Column(
-                children: [
-                  const SizedBox(height: 2),
-                  const LinearProgressIndicator(minHeight: 2),
-                  _buildDashboardBody(authProvider, healthProvider),
-                ],
-              ),
-            );
-          }
+        final showLoading =
+            healthProvider.isLoading && healthProvider.currentVitals != null;
 
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
-        }
-
-        return _buildDashboardBody(authProvider, healthProvider);
+        return _buildDashboardBody(
+          authProvider,
+          healthProvider,
+          showLoading: showLoading,
+        );
       },
     );
   }
 
   Widget _buildDashboardBody(
     AuthProvider authProvider,
-    HealthProvider healthProvider,
-  ) {
+    HealthProvider healthProvider, {
+    bool showLoading = false,
+  }) {
     final hasInstruction = healthProvider.liveInstruction.trim().isNotEmpty;
     final remainingSeconds = healthProvider.livePhaseRemainingSeconds;
     final phase = healthProvider.livePhase;
@@ -123,10 +114,18 @@ class _DashboardScreenState extends State<DashboardScreen>
             ? '${healthProvider.liveInstruction} (${remainingSeconds}s${phase == 'measuring' ? ' left' : ''})'
             : healthProvider.liveInstruction)
         : 'Updated just now';
+    final cachedAt = healthProvider.cachedAt;
+    final cachedLabel = healthProvider.isUsingCachedData
+        ? 'Cached ${_formatCacheTime(cachedAt)}'
+        : null;
 
     return SingleChildScrollView(
       child: Column(
         children: [
+          if (showLoading) ...[
+            const SizedBox(height: 2),
+            const LinearProgressIndicator(minHeight: 2),
+          ],
           // Header
           Padding(
             padding: const EdgeInsets.all(24),
@@ -229,7 +228,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                                             CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            'BioBand Pro',
+                                            'EthioBio',
                                             style: Theme.of(context)
                                                 .textTheme
                                                 .labelLarge
@@ -240,7 +239,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                           Text(
-                                            'Connected • 84% Battery',
+                                            'Connected',
                                             style: Theme.of(context)
                                                 .textTheme
                                                 .bodySmall,
@@ -287,7 +286,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        'BioBand Pro',
+                                        'EthioBio',
                                         style: Theme.of(context)
                                             .textTheme
                                             .labelLarge
@@ -296,7 +295,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                                             ),
                                       ),
                                       Text(
-                                        'Connected • 84% Battery',
+                                        'Connected',
                                         style: Theme.of(context)
                                             .textTheme
                                             .bodySmall,
@@ -304,23 +303,23 @@ class _DashboardScreenState extends State<DashboardScreen>
                                     ],
                                   ),
                                 ),
-                                ElevatedButton(
-                                  onPressed: () {},
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppTheme.primaryBlue,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 8,
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    'Sync Now',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
+                                // ElevatedButton(
+                                //   onPressed: () {},
+                                //   style: ElevatedButton.styleFrom(
+                                //     backgroundColor: AppTheme.primaryBlue,
+                                //     padding: const EdgeInsets.symmetric(
+                                //       horizontal: 12,
+                                //       vertical: 8,
+                                //     ),
+                                //   ),
+                                // child: const Text(
+                                //   'Sync Now',
+                                //   style: TextStyle(
+                                //     fontSize: 12,
+                                //     fontWeight: FontWeight.w600,
+                                //   ),
+                                // ),
+                                // ),
                               ],
                             ),
                     ),
@@ -360,6 +359,10 @@ class _DashboardScreenState extends State<DashboardScreen>
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
+                      if (cachedLabel != null) ...[
+                        const SizedBox(height: 6),
+                        _buildCachedBadge(context, cachedLabel),
+                      ],
                       const SizedBox(height: 16),
                     ],
                   );
@@ -392,6 +395,10 @@ class _DashboardScreenState extends State<DashboardScreen>
                         ),
                       ],
                     ),
+                    if (cachedLabel != null) ...[
+                      const SizedBox(height: 6),
+                      _buildCachedBadge(context, cachedLabel),
+                    ],
                     const SizedBox(height: 16),
                   ],
                 );
@@ -405,55 +412,46 @@ class _DashboardScreenState extends State<DashboardScreen>
               builder: (context, constraints) {
                 final isNarrow = constraints.maxWidth < 420;
 
-                if (healthProvider.currentVitals == null) {
-                  return Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppTheme.lightGray,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppTheme.mediumGray),
-                    ),
-                    child: Text(
-                      healthProvider.errorMessage ??
-                          'No live vitals yet. Keep the serial listener running and streaming sensor data.',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  );
-                }
-
+                final vitals = healthProvider.currentVitals;
+                final isPlaceholder = vitals == null;
                 final cards = [
                   VitalCard(
                     icon: Icons.favorite,
                     label: 'Heart Rate',
-                    value: healthProvider.currentVitals!.heartRate.toString(),
+                    value: (vitals?.heartRate ?? 0).toString(),
                     unit: 'bpm',
-                    status: healthProvider.currentVitals!.getHeartRateStatus(),
+                    status: isPlaceholder
+                        ? VitalStatus.unknown
+                        : vitals!.getHeartRateStatus(),
                   ),
                   VitalCard(
                     icon: Icons.water_drop,
                     label: 'SpO2',
-                    value:
-                        healthProvider.currentVitals!.spo2.toStringAsFixed(1),
+                    value: (vitals?.spo2 ?? 0.0).toStringAsFixed(1),
                     unit: '%',
-                    status: healthProvider.currentVitals!.getSpo2Status(),
+                    status: isPlaceholder
+                        ? VitalStatus.unknown
+                        : vitals!.getSpo2Status(),
                   ),
                   VitalCard(
                     icon: Icons.favorite_border,
                     label: 'Blood Pressure',
-                    value:
-                        '${healthProvider.currentVitals!.systolicBP}/${healthProvider.currentVitals!.diastolicBP}',
+                    value: vitals == null
+                        ? '0/0'
+                        : '${vitals.systolicBP}/${vitals.diastolicBP}',
                     unit: 'mmHg',
-                    status: healthProvider.currentVitals!.getBPStatus(),
+                    status: isPlaceholder
+                        ? VitalStatus.unknown
+                        : vitals!.getBPStatus(),
                   ),
                   VitalCard(
                     icon: Icons.thermostat,
                     label: 'Temperature',
-                    value: healthProvider.currentVitals!.temperature
-                        .toStringAsFixed(1),
+                    value: (vitals?.temperature ?? 0.0).toStringAsFixed(1),
                     unit: '°C',
-                    status:
-                        healthProvider.currentVitals!.getTemperatureStatus(),
+                    status: isPlaceholder
+                        ? VitalStatus.unknown
+                        : vitals!.getTemperatureStatus(),
                   ),
                 ];
 
@@ -506,6 +504,35 @@ class _DashboardScreenState extends State<DashboardScreen>
         ],
       ),
     );
+  }
+
+  Widget _buildCachedBadge(BuildContext context, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppTheme.primaryBlue.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: AppTheme.primaryBlue.withOpacity(0.3),
+        ),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: AppTheme.primaryBlue,
+              fontWeight: FontWeight.w600,
+            ),
+      ),
+    );
+  }
+
+  String _formatCacheTime(DateTime? cachedAt) {
+    if (cachedAt == null) return 'just now';
+    final month = cachedAt.month.toString().padLeft(2, '0');
+    final day = cachedAt.day.toString().padLeft(2, '0');
+    final hour = cachedAt.hour.toString().padLeft(2, '0');
+    final minute = cachedAt.minute.toString().padLeft(2, '0');
+    return '$month/$day $hour:$minute';
   }
 
   Widget _buildBottomNavBar() {

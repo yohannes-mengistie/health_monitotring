@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-enum VitalStatus { normal, elevated, critical }
+enum VitalStatus { normal, elevated, critical, unknown }
 
 class VitalReading extends Equatable {
   final String id;
@@ -99,23 +99,19 @@ class VitalsTrend extends Equatable {
     required this.endDate,
   });
 
-  double get averageHeartRate =>
-      readings.isEmpty
-          ? 0
-          : readings.map((e) => e.heartRate).reduce((a, b) => a + b) /
-              readings.length;
+  double get averageHeartRate => readings.isEmpty
+      ? 0
+      : readings.map((e) => e.heartRate).reduce((a, b) => a + b) /
+          readings.length;
 
-  double get averageSpo2 =>
-      readings.isEmpty
-          ? 0
-          : readings.map((e) => e.spo2).reduce((a, b) => a + b) /
-              readings.length;
+  double get averageSpo2 => readings.isEmpty
+      ? 0
+      : readings.map((e) => e.spo2).reduce((a, b) => a + b) / readings.length;
 
-  double get averageTemperature =>
-      readings.isEmpty
-          ? 0
-          : readings.map((e) => e.temperature).reduce((a, b) => a + b) /
-              readings.length;
+  double get averageTemperature => readings.isEmpty
+      ? 0
+      : readings.map((e) => e.temperature).reduce((a, b) => a + b) /
+          readings.length;
 
   @override
   List<Object?> get props => [readings, startDate, endDate];

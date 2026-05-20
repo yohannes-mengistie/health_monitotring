@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'translate' => [
+        'url' => env('TRANSLATE_URL', 'https://libretranslate.com/translate'),
+        'key' => env('TRANSLATE_API_KEY'),
+        'timeout' => env('TRANSLATE_TIMEOUT', 12),
+    ],
+
 ];

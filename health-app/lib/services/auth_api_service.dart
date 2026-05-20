@@ -4,6 +4,16 @@ import 'package:flutter/foundation.dart';
 import 'package:health_monitor_ai/config/api_config.dart';
 import 'package:http/http.dart' as http;
 
+class AuthApiException implements Exception {
+  final String message;
+  final int statusCode;
+
+  const AuthApiException({required this.message, required this.statusCode});
+
+  @override
+  String toString() => message;
+}
+
 class AuthApiService {
   final http.Client _client;
 
@@ -19,8 +29,6 @@ class AuthApiService {
     required String gender,
     required double weight,
     required double height,
-    required double diastolicBp,
-    required double systolicBp,
   }) async {
     final response = await _client.post(
       Uri.parse('${ApiConfig.baseUrl}/register'),
@@ -35,8 +43,6 @@ class AuthApiService {
         'gender': gender,
         'weight': weight,
         'height': height,
-        'diastolic_bp': diastolicBp,
-        'systolic_bp': systolicBp,
       }),
     );
 
@@ -147,7 +153,10 @@ class AuthApiService {
       return body;
     }
 
-    throw Exception(_extractErrorMessage(body, response.statusCode));
+    throw AuthApiException(
+      message: _extractErrorMessage(body, response.statusCode),
+      statusCode: response.statusCode,
+    );
   }
 
   Map<String, dynamic> _decodeResponseBody(String body) {

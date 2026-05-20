@@ -29,10 +29,13 @@ class RegisterController extends Controller
             'gender' => 'required|in:male,female',
             'weight' => 'required|numeric',
             'height' => 'required|numeric',
-            'diastolic_bp' => 'required|numeric',
-            'systolic_bp' => 'required|numeric',
+            'diastolic_bp' => 'sometimes|numeric|min:30|max:250',
+            'systolic_bp' => 'sometimes|numeric|min:40|max:300',
 
         ]);
+
+        $defaultSystolicBp = 120.0;
+        $defaultDiastolicBp = 80.0;
 
         // Create a new user instance
         $user  = User::create([
@@ -44,8 +47,8 @@ class RegisterController extends Controller
             'gender' => $validatedData['gender'],
             'weight' => $validatedData['weight'],
             'height' => $validatedData['height'],
-            'diastolic_bp' => $validatedData['diastolic_bp'],
-            'systolic_bp' => $validatedData['systolic_bp'],
+            'diastolic_bp' => (float)($validatedData['diastolic_bp'] ?? $defaultDiastolicBp),
+            'systolic_bp' => (float)($validatedData['systolic_bp'] ?? $defaultSystolicBp),
         ]);
 
         return response()->json([

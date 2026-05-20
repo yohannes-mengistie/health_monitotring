@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:health_monitor_ai/config/app_theme.dart';
+import 'package:health_monitor_ai/providers/auth_provider.dart';
 import 'package:health_monitor_ai/providers/health_provider.dart';
 import 'package:health_monitor_ai/models/analysis_model.dart';
 
@@ -12,13 +13,15 @@ class AnalysisScreen extends StatefulWidget {
 }
 
 class _AnalysisScreenState extends State<AnalysisScreen> {
-  int _currentIndex = 0;
   PageController? _pageController;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadAnalysisData();
+    });
   }
 
   @override
@@ -46,16 +49,37 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       body: Consumer<HealthProvider>(
         builder: (context, healthProvider, _) {
           if (healthProvider.currentAnalysis == null) {
-            return const Center(
-              child: CircularProgressIndicator(),
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  healthProvider.errorMessage ??
+                      'No analysis available yet. Start measurement and try again.',
+                  textAlign: TextAlign.center,
+                ),
+              ),
             );
           }
 
           final analysis = healthProvider.currentAnalysis!;
+          final vitals = healthProvider.currentVitals;
+          final hrValue = vitals?.heartRate.toString() ?? '--';
+          final riskValue = analysis.riskScore.toStringAsFixed(0);
+          final bpValue = vitals == null
+              ? '--/--'
+              : '${vitals.systolicBP}/${vitals.diastolicBP}';
+          final spo2Value = vitals == null
+              ? '--'
+              : vitals.spo2.toStringAsFixed(
+                  vitals.spo2.truncateToDouble() == vitals.spo2 ? 0 : 1);
 
           return SingleChildScrollView(
             child: Column(
               children: [
+                if (healthProvider.isLoading) ...[
+                  const SizedBox(height: 2),
+                  const LinearProgressIndicator(minHeight: 2),
+                ],
                 // Navigation tabs
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -115,9 +139,11 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                               context: context,
                               icon: Icons.favorite,
                               label: 'Heart Rate',
-                              value: '76',
+                              value: hrValue,
                               unit: 'bpm',
-                              status: 'Normal',
+                              status: vitals == null
+                                  ? 'Unknown'
+                                  : vitals.getHeartRateStatus().name,
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -126,9 +152,9 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                               context: context,
                               icon: Icons.warning,
                               label: 'Cardio Risk',
-                              value: '22',
+                              value: riskValue,
                               unit: '%',
-                              status: 'Moderate',
+                              status: analysis.riskLevel.name,
                               color: AppTheme.accentOrange,
                             ),
                           ),
@@ -140,11 +166,13 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                           Expanded(
                             child: _buildMetricCard(
                               context: context,
-                              icon: Icons.water_drop,
-                              label: 'HRV',
-                              value: '41',
-                              unit: 'ms',
-                              status: 'Low',
+                              icon: Icons.monitor_heart,
+                              label: 'Blood Pressure',
+                              value: bpValue,
+                              unit: 'mmHg',
+                              status: vitals == null
+                                  ? 'Unknown'
+                                  : vitals.getBPStatus().name,
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -153,9 +181,11 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                               context: context,
                               icon: Icons.water_drop,
                               label: 'SpO2',
-                              value: '96',
+                              value: spo2Value,
                               unit: '%',
-                              status: 'Normal',
+                              status: vitals == null
+                                  ? 'Unknown'
+                                  : vitals.getSpo2Status().name,
                             ),
                           ),
                         ],
@@ -277,6 +307,21 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
         },
       ),
     );
+  }
+
+  Future<void> _loadAnalysisData() async {
+    if (!mounted) return;
+
+    final authProvider = context.read<AuthProvider>();
+    final user = authProvider.currentUser;
+    if (user == null) {
+      return;
+    }
+
+    await context.read<HealthProvider>().loadLiveVitalsAndRisk(
+          userId: user.id,
+          token: authProvider.authToken,
+        );
   }
 
   Widget _buildMetricCard({

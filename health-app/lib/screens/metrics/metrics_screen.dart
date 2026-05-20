@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
 import 'package:health_monitor_ai/providers/auth_provider.dart';
@@ -15,6 +17,10 @@ class MetricsScreen extends StatefulWidget {
 class _MetricsScreenState extends State<MetricsScreen> {
   String _selectedPeriod = 'Week';
   final List<String> _periods = ['Day', 'Week', 'Month', 'Year'];
+  bool _didAutoRetryAfterAuth = false;
+  bool _isHistoryLoading = false;
+  List<Map<String, dynamic>> _historyPoints = [];
+  String _historyPeriod = '';
 
   @override
   void initState() {
@@ -26,9 +32,17 @@ class _MetricsScreenState extends State<MetricsScreen> {
 
   Future<void> _loadOverview() async {
     final authProvider = context.read<AuthProvider>();
+    var token = authProvider.authToken;
+
+    // Handle first-open race where token may not be hydrated yet.
+    if (token == null || token.isEmpty) {
+      await authProvider.checkAuthStatus();
+      token = authProvider.authToken;
+    }
+
     await context.read<HealthProvider>().loadMetricsOverview(
           period: _selectedPeriod.toLowerCase(),
-          token: authProvider.authToken,
+          token: token,
         );
   }
 
@@ -42,12 +56,21 @@ class _MetricsScreenState extends State<MetricsScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: Consumer<HealthProvider>(
-        builder: (context, healthProvider, _) {
+      body: Consumer2<AuthProvider, HealthProvider>(
+        builder: (context, authProvider, healthProvider, _) {
           final data = healthProvider.metricsOverviewData;
 
-          if (healthProvider.isLoading && (data == null || data.isEmpty)) {
-            return const Center(child: CircularProgressIndicator());
+          final token = authProvider.authToken;
+          final hasToken = token != null && token.isNotEmpty;
+          if (!_didAutoRetryAfterAuth &&
+              hasToken &&
+              !healthProvider.isLoading &&
+              (data == null || data.isEmpty)) {
+            _didAutoRetryAfterAuth = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              _loadOverview();
+            });
           }
 
           if (data == null || data.isEmpty) {
@@ -78,6 +101,8 @@ class _MetricsScreenState extends State<MetricsScreen> {
                 child: ListView(
                   padding: const EdgeInsets.all(20),
                   children: [
+                    if (healthProvider.isLoading)
+                      const LinearProgressIndicator(minHeight: 2),
                     _buildPeriodSelector(),
                     const SizedBox(height: 18),
                     _buildScoreCard(scoreValue, scoreLabel),
@@ -131,11 +156,14 @@ class _MetricsScreenState extends State<MetricsScreen> {
                                 width: double.infinity,
                                 child: ElevatedButton.icon(
                                   onPressed: () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                            'Export will be available in the next update.'),
-                                      ),
+                                    _exportReport(
+                                      context: context,
+                                      period: _selectedPeriod,
+                                      scoreValue: scoreValue,
+                                      scoreLabel: scoreLabel,
+                                      insights: insights,
+                                      summary: summary,
+                                      chartPoints: chartPoints,
                                     );
                                   },
                                   icon: const Icon(Icons.download_rounded),
@@ -147,11 +175,10 @@ class _MetricsScreenState extends State<MetricsScreen> {
                                 width: double.infinity,
                                 child: OutlinedButton.icon(
                                   onPressed: () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                            'Full history view will be added next.'),
-                                      ),
+                                    _showFullHistory(
+                                      context: context,
+                                      period: _selectedPeriod,
+                                      chartPoints: chartPoints,
                                     );
                                   },
                                   icon: const Icon(Icons.history_toggle_off),
@@ -167,12 +194,15 @@ class _MetricsScreenState extends State<MetricsScreen> {
                             Expanded(
                               child: ElevatedButton.icon(
                                 onPressed: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                          'Export will be available in the next update.'),
-                                    ),
-                                  );
+                                    _exportReport(
+                                      context: context,
+                                      period: _selectedPeriod,
+                                      scoreValue: scoreValue,
+                                      scoreLabel: scoreLabel,
+                                      insights: insights,
+                                      summary: summary,
+                                      chartPoints: chartPoints,
+                                    );
                                 },
                                 icon: const Icon(Icons.download_rounded),
                                 label: const Text('Export Report'),
@@ -182,12 +212,11 @@ class _MetricsScreenState extends State<MetricsScreen> {
                             Expanded(
                               child: OutlinedButton.icon(
                                 onPressed: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                          'Full history view will be added next.'),
-                                    ),
-                                  );
+                                    _showFullHistory(
+                                      context: context,
+                                      period: _selectedPeriod,
+                                      chartPoints: chartPoints,
+                                    );
                                 },
                                 icon: const Icon(Icons.history_toggle_off),
                                 label: const Text('View Full History'),
@@ -267,89 +296,80 @@ class _MetricsScreenState extends State<MetricsScreen> {
           ),
         ],
       ),
-      child: Row(
-        children: [
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final isNarrow = constraints.maxWidth < 360;
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isNarrow = constraints.maxWidth < 360;
 
-              final gauge = SizedBox(
-                height: 96,
-                width: 96,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    CircularProgressIndicator(
-                      value: score / 100,
-                      strokeWidth: 9,
-                      backgroundColor: AppTheme.white.withOpacity(0.18),
-                      valueColor:
-                          const AlwaysStoppedAnimation<Color>(AppTheme.white),
-                    ),
-                    Text(
-                      '${score.round()}',
-                      style:
-                          Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                color: AppTheme.white,
-                                fontWeight: FontWeight.w800,
-                              ),
-                    ),
-                  ],
+          final gauge = SizedBox(
+            height: 96,
+            width: 96,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                CircularProgressIndicator(
+                  value: score / 100,
+                  strokeWidth: 9,
+                  backgroundColor: AppTheme.white.withOpacity(0.18),
+                  valueColor:
+                      const AlwaysStoppedAnimation<Color>(AppTheme.white),
                 ),
-              );
-
-              final content = Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Overall Health Score',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: AppTheme.white.withOpacity(0.92),
-                        ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    '$label • $_selectedPeriod',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: AppTheme.white,
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Trend-focused view for stable clinical interpretation.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppTheme.white.withOpacity(0.82),
-                        ),
-                  ),
-                ],
-              );
-
-              if (isNarrow) {
-                return Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      gauge,
-                      const SizedBox(height: 14),
-                      content,
-                    ],
-                  ),
-                );
-              }
-
-              return Expanded(
-                child: Row(
-                  children: [
-                    gauge,
-                    const SizedBox(width: 16),
-                    Expanded(child: content),
-                  ],
+                Text(
+                  '${score.round()}',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        color: AppTheme.white,
+                        fontWeight: FontWeight.w800,
+                      ),
                 ),
-              );
-            },
-          ),
-        ],
+              ],
+            ),
+          );
+
+          final content = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Overall Health Score',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: AppTheme.white.withOpacity(0.92),
+                    ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '$label • $_selectedPeriod',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: AppTheme.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Trend-focused view for stable clinical interpretation.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppTheme.white.withOpacity(0.82),
+                    ),
+              ),
+            ],
+          );
+
+          if (isNarrow) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                gauge,
+                const SizedBox(height: 14),
+                content,
+              ],
+            );
+          }
+
+          return Row(
+            children: [
+              gauge,
+              const SizedBox(width: 16),
+              Expanded(child: content),
+            ],
+          );
+        },
       ),
     );
   }
@@ -762,5 +782,215 @@ class _MetricsScreenState extends State<MetricsScreen> {
   double _toDouble(dynamic value) {
     if (value is num) return value.toDouble();
     return double.tryParse(value?.toString() ?? '') ?? 0.0;
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchHistoryPoints(String period) async {
+    if (_isHistoryLoading && _historyPeriod == period) return _historyPoints;
+
+    setState(() {
+      _isHistoryLoading = true;
+    });
+
+    final authProvider = context.read<AuthProvider>();
+    var token = authProvider.authToken;
+    if (token == null || token.isEmpty) {
+      await authProvider.checkAuthStatus();
+      token = authProvider.authToken;
+    }
+
+    final points = await context.read<HealthProvider>().loadMetricsHistory(
+          period: period.toLowerCase(),
+          token: token,
+        );
+
+    if (!mounted) return points;
+    setState(() {
+      _historyPoints = points;
+      _historyPeriod = period;
+      _isHistoryLoading = false;
+    });
+
+    return points;
+  }
+
+  Future<void> _exportReport({
+    required BuildContext context,
+    required String period,
+    required double scoreValue,
+    required String scoreLabel,
+    required List<Map<String, dynamic>> insights,
+    required Map<String, dynamic> summary,
+    required List<Map<String, dynamic>> chartPoints,
+  }) async {
+    final historyPoints = _historyPeriod == period
+        ? _historyPoints
+        : await _fetchHistoryPoints(period);
+    final exportPoints =
+        historyPoints.isNotEmpty ? historyPoints : chartPoints;
+
+    final document = pw.Document();
+    document.addPage(
+      pw.MultiPage(
+        build: (context) {
+          return [
+            pw.Text('Metrics Report ($period)',
+                style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 8),
+            pw.Text('Health Score: ${scoreValue.round()} ($scoreLabel)'),
+            pw.SizedBox(height: 12),
+            if (insights.isNotEmpty) ...[
+              pw.Text('Key Insights', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 6),
+              ...insights.map((item) {
+                final title = item['title']?.toString() ?? 'Insight';
+                final value = _toDouble(item['value']);
+                final unit = item['unit']?.toString() ?? '';
+                return pw.Bullet(text: '$title: ${_formatNumber(value)} $unit');
+              }),
+              pw.SizedBox(height: 12),
+            ],
+            if (summary.isNotEmpty) ...[
+              pw.Text('Summary Statistics', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 6),
+              ...summary.entries.map((entry) {
+                final formattedKey = entry.key.replaceAll('_', ' ');
+                final value = _formatNumber(_toDouble(entry.value));
+                return pw.Bullet(text: '$formattedKey: $value');
+              }),
+              pw.SizedBox(height: 12),
+            ],
+            if (exportPoints.isNotEmpty) ...[
+              pw.Text('History', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 6),
+              pw.Table.fromTextArray(
+                headers: const ['Time', 'HR', 'SpO2', 'BP', 'Temp'],
+                data: exportPoints.take(200).map((row) {
+                  final label = _historyLabel(row, 0);
+                  final hr = _formatNumber(_toDouble(row['"'"'heart_rate'"'"']));
+                  final spo2 = _formatNumber(_toDouble(row['"'"'spo2'"'"']));
+                  final bp =
+                      '${_formatNumber(_toDouble(row['"'"'systolic_bp'"'"']))}/${_formatNumber(_toDouble(row['"'"'diastolic_bp'"'"']))}';
+                  final temp = _formatNumber(_toDouble(row['"'"'temperature'"'"']));
+                  return [label, hr, spo2, bp, temp];
+                }).toList(),
+              ),
+            ],
+          ];
+        },
+      ),
+    );
+
+    await Printing.layoutPdf(
+      onLayout: (format) async => document.save(),
+      name: 'metrics_report_${period.toLowerCase()}.pdf',
+    );
+  }
+
+  void _showFullHistory({
+    required BuildContext context,
+    required String period,
+    required List<Map<String, dynamic>> chartPoints,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) {
+        return FutureBuilder<List<Map<String, dynamic>>>(
+          future: _historyPeriod == period
+              ? Future.value(_historyPoints)
+              : _fetchHistoryPoints(period),
+          builder: (context, snapshot) {
+            final data = snapshot.data;
+            final effectivePoints =
+                data != null && data.isNotEmpty ? data : chartPoints;
+
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Padding(
+                padding: EdgeInsets.all(24),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+
+            return SafeArea(
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Full History ($period)',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 12),
+                    if (effectivePoints.isEmpty)
+                      Text(
+                        'No history available yet.',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      )
+                    else
+                      Flexible(
+                        child: ListView.separated(
+                          shrinkWrap: true,
+                          itemCount: effectivePoints.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 8),
+                          itemBuilder: (context, index) {
+                            final row = effectivePoints[index];
+                            final label = _historyLabel(row, index);
+                            return Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: AppTheme.lightGray,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    label,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelLarge,
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'HR ${_formatNumber(_toDouble(row['"'"'heart_rate'"'"']))} bpm · SpO2 ${_formatNumber(_toDouble(row['"'"'spo2'"'"']))}% · BP ${_formatNumber(_toDouble(row['"'"'systolic_bp'"'"']))}/${_formatNumber(_toDouble(row['"'"'diastolic_bp'"'"']))} · Temp ${_formatNumber(_toDouble(row['"'"'temperature'"'"']))} C',
+                                    style:
+                                        Theme.of(context).textTheme.bodySmall,
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    const SizedBox(height: 8),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String _historyLabel(Map<String, dynamic> row, int index) {
+    final candidateKeys = ['label', 'date', 'timestamp', 'time', 'day'];
+    for (final key in candidateKeys) {
+      final raw = row[key];
+      if (raw != null && raw.toString().trim().isNotEmpty) {
+        return raw.toString();
+      }
+    }
+    return 'Point ${index + 1}';
+  }
+
+  String _formatNumber(double value) {
+    final fixed = value.truncateToDouble() == value ? 0 : 1;
+    return value.toStringAsFixed(fixed);
   }
 }

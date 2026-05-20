@@ -1,11 +1,14 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:health_monitor_ai/models/vitals_model.dart';
 import 'package:health_monitor_ai/models/analysis_model.dart';
 import 'package:health_monitor_ai/models/recommendation_model.dart';
 import 'package:health_monitor_ai/services/health_api_service.dart';
-import 'package:health_monitor_ai/services/mock_health_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HealthProvider extends ChangeNotifier {
+  static const String _liveCachePrefix = 'live_cache_v1';
   final HealthApiService _healthApiService;
 
   HealthProvider({HealthApiService? healthApiService})
@@ -28,8 +31,13 @@ class HealthProvider extends ChangeNotifier {
   String _livePhase = 'measuring';
   int _livePhaseRemainingSeconds = 0;
   String _liveInstruction = 'Measuring... keep your hand steady.';
+  bool _isUsingCachedData = false;
+  DateTime? _cachedAt;
   bool _isLoading = false;
   String? _errorMessage;
+  String _lastUserPrompt = '';
+  String _lastCurrentFeeling = '';
+  String _lastStructuredAssessmentJson = '';
 
   VitalReading? get currentVitals => _currentVitals;
   List<VitalReading> get vitalsHistory => _vitalsHistory;
@@ -48,8 +56,25 @@ class HealthProvider extends ChangeNotifier {
   String get livePhase => _livePhase;
   int get livePhaseRemainingSeconds => _livePhaseRemainingSeconds;
   String get liveInstruction => _liveInstruction;
+  bool get isUsingCachedData => _isUsingCachedData;
+  DateTime? get cachedAt => _cachedAt;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  String get lastUserPrompt => _lastUserPrompt;
+  String get lastCurrentFeeling => _lastCurrentFeeling;
+  String get lastStructuredAssessmentJson => _lastStructuredAssessmentJson;
+
+  void resetUserState() {
+    _currentRecommendation = null;
+    _vitalsHistory = [];
+    _lastUserPrompt = '';
+    _lastCurrentFeeling = '';
+    _lastStructuredAssessmentJson = '';
+    _errorMessage = null;
+    _clearDashboard();
+    _clearMetrics();
+    notifyListeners();
+  }
 
   Future<void> initializeHealth(String userId) async {
     _isLoading = true;
@@ -57,67 +82,31 @@ class HealthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Generate mock vitals
-      _currentVitals =
-          MockHealthService.generateMockVitalReading(userId: userId);
-
-      // Generate mock history for trends
-      _vitalsHistory = MockHealthService.generateMockVitalsHistory(
-        userId: userId,
-        days: 30,
-      );
-
-      // Generate analysis based on vitals
-      _currentAnalysis = MockHealthService.generateMockAnalysis(
-        userId: userId,
-        recentReadings: _vitalsHistory.take(24).toList(),
-      );
-
-      // Generate recommendations based on analysis
-      _currentRecommendation = MockHealthService.generateMockRecommendations(
-        userId: userId,
-        analysis: _currentAnalysis!,
-      );
-
-      _setMetricsFromFallback();
-
-      _isLoading = false;
-      notifyListeners();
+      final restored = await _restoreLiveCache(userId);
+      if (!restored) {
+        _clearDashboard();
+        _clearMetrics();
+        _currentRecommendation = null;
+        _errorMessage =
+            'Live data only. Start the device stream to load vitals.';
+      }
     } catch (e) {
       _errorMessage = e.toString();
-      _isLoading = false;
-      notifyListeners();
     }
+
+    _isLoading = false;
+    notifyListeners();
   }
 
   Future<void> refreshVitals(String userId) async {
     try {
-      // Generate new mock vitals reading
-      _currentVitals =
-          MockHealthService.generateMockVitalReading(userId: userId);
-
-      // Add to history
-      _vitalsHistory.insert(0, _currentVitals!);
-
-      // Regenerate analysis
-      _currentAnalysis = MockHealthService.generateMockAnalysis(
-        userId: userId,
-        recentReadings: _vitalsHistory.take(24).toList(),
-      );
-
-      // Regenerate recommendations
-      _currentRecommendation = MockHealthService.generateMockRecommendations(
-        userId: userId,
-        analysis: _currentAnalysis!,
-      );
-
-      _setMetricsFromFallback();
-
-      notifyListeners();
+      _errorMessage =
+          'Live data only. Start the device stream to refresh vitals.';
     } catch (e) {
       _errorMessage = e.toString();
-      notifyListeners();
     }
+
+    notifyListeners();
   }
 
   Future<void> updateTaskStatus(String taskId, TaskStatus newStatus) async {
@@ -223,8 +212,8 @@ class HealthProvider extends ChangeNotifier {
           _setMetricsFromBackend(response);
         } else {
           _clearMetrics();
-          _errorMessage =
-              'Metrics endpoint returned no usable data. Waiting for live sensor readings.';
+          _errorMessage = _extractBackendMessage(response) ??
+              'Metrics endpoint returned no usable data. If database has rows, verify you are signed in with the same account that produced those readings.';
         }
       }
     } catch (e) {
@@ -234,6 +223,35 @@ class HealthProvider extends ChangeNotifier {
 
     _isLoading = false;
     notifyListeners();
+  }
+
+  Future<List<Map<String, dynamic>>> loadMetricsHistory({
+    required String period,
+    String? token,
+  }) async {
+    try {
+      if (token == null || token.isEmpty) {
+        _errorMessage = 'Authentication token is missing. Please sign in again.';
+        notifyListeners();
+        return [];
+      }
+
+      final response = await _healthApiService.fetchMetricsHistory(
+        token: token,
+        period: period,
+      );
+
+      final data = response['data'];
+      if (data is Map<String, dynamic>) {
+        return _asMapList(data['chart_points']);
+      }
+
+      return const <Map<String, dynamic>>[];
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+      return [];
+    }
   }
 
   Future<void> loadLiveVitalsAndRisk({
@@ -259,15 +277,27 @@ class HealthProvider extends ChangeNotifier {
 
         if (data is Map<String, dynamic> && _hasDashboardData(data)) {
           _setDashboardFromBackend(userId, data);
+          await _saveLiveCache(userId);
         } else {
-          _clearDashboard();
-          _errorMessage =
-              'No live data found yet. Start serial streaming to populate vitals.';
+          final restored = await _restoreLiveCache(userId);
+          if (restored) {
+            _errorMessage =
+                'Live connection unavailable. Showing last saved reading.';
+          } else {
+            _clearDashboard();
+            _errorMessage = _extractBackendMessage(response) ??
+                'No live data found yet. Start serial streaming to populate vitals.';
+          }
         }
       }
     } catch (e) {
-      _clearDashboard();
-      _errorMessage = e.toString();
+      final restored = await _restoreLiveCache(userId);
+      if (restored) {
+        _errorMessage = 'Live connection lost. Showing last saved reading.';
+      } else {
+        _clearDashboard();
+        _errorMessage = e.toString();
+      }
     }
 
     if (showLoading) {
@@ -283,21 +313,42 @@ class HealthProvider extends ChangeNotifier {
     required String userId,
     String? token,
     required String language,
+    String? userPrompt,
+    String? currentFeeling,
+    String? historySummary,
+    Map<String, dynamic>? structuredAssessment,
   }) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
+    final previousRecommendation = _currentRecommendation;
+
     try {
       if (token == null || token.isEmpty) {
-        _currentRecommendation = null;
+        _currentRecommendation = previousRecommendation;
         _errorMessage =
             'Authentication token is missing. Please sign in again.';
       } else {
+        final cleanedUserPrompt = userPrompt?.trim();
+        final cleanedFeeling = currentFeeling?.trim();
+        final cleanedStructuredAssessment = structuredAssessment == null
+            ? null
+            : Map<String, dynamic>.from(structuredAssessment);
+        final computedHistory = (historySummary?.trim().isNotEmpty ?? false)
+            ? historySummary!.trim()
+            : _buildRecentHistorySummary();
+
         Map<String, dynamic> response;
         try {
           response = await _healthApiService.fetchDetailedAnalysisV2(
             token: token,
+            language: language,
+            userPrompt: cleanedUserPrompt,
+            currentFeeling: cleanedFeeling,
+            historySummary: computedHistory,
+            latestVitals: _latestVitalsPayload(),
+            structuredAssessment: cleanedStructuredAssessment,
           );
         } catch (_) {
           // Keep backward compatibility by falling back to legacy endpoint.
@@ -309,8 +360,9 @@ class HealthProvider extends ChangeNotifier {
 
         final report = _extractReportText(response);
         if (report == null || report.trim().isEmpty) {
-          _currentRecommendation = null;
-          _errorMessage = 'Recommendation report is empty.';
+          _currentRecommendation = previousRecommendation;
+          _errorMessage = _extractBackendMessage(response) ??
+              'Recommendation report is empty.';
         } else {
           final now = DateTime.now();
           _currentRecommendation = HealthRecommendation(
@@ -346,10 +398,17 @@ class HealthProvider extends ChangeNotifier {
           }
 
           _errorMessage = null;
+          _lastUserPrompt = cleanedUserPrompt ?? '';
+          _lastCurrentFeeling = cleanedFeeling ?? '';
+          _lastStructuredAssessmentJson = cleanedStructuredAssessment == null
+              ? ''
+              : const JsonEncoder.withIndent(
+                  '  ',
+                ).convert(cleanedStructuredAssessment);
         }
       }
     } catch (e) {
-      _currentRecommendation = null;
+      _currentRecommendation = previousRecommendation;
       _errorMessage = e.toString();
     }
 
@@ -373,10 +432,10 @@ class HealthProvider extends ChangeNotifier {
 
     final pinnedMetrics = data['pinned_metrics'];
     final otherMetrics = data['other_metrics'];
-    if (pinnedMetrics is! List || pinnedMetrics.length < 2) {
+    if (pinnedMetrics is! List || pinnedMetrics.isEmpty) {
       return false;
     }
-    if (otherMetrics is! List || otherMetrics.length < 2) {
+    if (otherMetrics is! List || otherMetrics.isEmpty) {
       return false;
     }
 
@@ -386,36 +445,20 @@ class HealthProvider extends ChangeNotifier {
   void _setMetricsFromBackend(Map<String, dynamic> payload) {
     final data = payload['data'] as Map<String, dynamic>;
     _metricsOverviewData = Map<String, dynamic>.from(data);
-    final pinnedMetrics =
-        List<Map<String, dynamic>>.from(data['pinned_metrics'] as List);
-    final otherMetrics =
-        List<Map<String, dynamic>>.from(data['other_metrics'] as List);
+    final pinnedMetrics = _asMapList(data['pinned_metrics']);
+    final otherMetrics = _asMapList(data['other_metrics']);
 
-    final heartRateMetric = pinnedMetrics.firstWhere(
-      (item) => item['key']?.toString() == 'heart_rate',
-      orElse: () => pinnedMetrics.first,
-    );
-    final spo2Metric = pinnedMetrics.firstWhere(
-      (item) => item['key']?.toString() == 'spo2',
-      orElse: () =>
-          pinnedMetrics.length > 1 ? pinnedMetrics[1] : pinnedMetrics.first,
-    );
-    final bloodPressureMetric = otherMetrics.firstWhere(
-      (item) => item['key']?.toString() == 'blood_pressure',
-      orElse: () => otherMetrics.first,
-    );
-    final temperatureMetric = otherMetrics.firstWhere(
-      (item) => item['key']?.toString() == 'temperature',
-      orElse: () =>
-          otherMetrics.length > 1 ? otherMetrics[1] : otherMetrics.first,
-    );
+    final heartRateMetric = _findMetric(pinnedMetrics, 'heart_rate');
+    final spo2Metric = _findMetric(pinnedMetrics, 'spo2');
+    final bloodPressureMetric = _findMetric(otherMetrics, 'blood_pressure');
+    final temperatureMetric = _findMetric(otherMetrics, 'temperature');
 
-    _avgHeartRate = _toDouble(heartRateMetric['value']);
-    _avgSpo2 = _toDouble(spo2Metric['value']);
-    _heartRateTrendPercent = _toDouble(heartRateMetric['trend_percent']);
-    _spo2TrendPercent = _toDouble(spo2Metric['trend_percent']);
+    _avgHeartRate = _toDouble(heartRateMetric?['value']);
+    _avgSpo2 = _toDouble(spo2Metric?['value']);
+    _heartRateTrendPercent = _toDouble(heartRateMetric?['trend_percent']);
+    _spo2TrendPercent = _toDouble(spo2Metric?['trend_percent']);
 
-    final bpValue = bloodPressureMetric['value'];
+    final bpValue = bloodPressureMetric?['value'];
     if (bpValue is Map<String, dynamic>) {
       _systolicBp = _toDouble(bpValue['systolic']).round();
       _diastolicBp = _toDouble(bpValue['diastolic']).round();
@@ -424,24 +467,27 @@ class HealthProvider extends ChangeNotifier {
       _diastolicBp = 0;
     }
 
-    _temperature = _toDouble(temperatureMetric['value']);
+    _temperature = _toDouble(temperatureMetric?['value']);
     _metricsUsingBackend = true;
     _errorMessage = null;
   }
 
-  void _setMetricsFromFallback() {
-    final fallbackVitals = _currentVitals ??
-        MockHealthService.generateMockVitalReading(userId: 'fallback_user');
+  List<Map<String, dynamic>> _asMapList(dynamic value) {
+    if (value is! List) return const <Map<String, dynamic>>[];
+    return value
+        .whereType<Map>()
+        .map((entry) => entry.map((k, v) => MapEntry(k.toString(), v)))
+        .toList();
+  }
 
-    _avgHeartRate = fallbackVitals.heartRate.toDouble();
-    _avgSpo2 = fallbackVitals.spo2;
-    _heartRateTrendPercent = 2.0;
-    _spo2TrendPercent = -0.3;
-    _systolicBp = fallbackVitals.systolicBP;
-    _diastolicBp = fallbackVitals.diastolicBP;
-    _temperature = fallbackVitals.temperature;
-    _metricsOverviewData = null;
-    _metricsUsingBackend = false;
+  Map<String, dynamic>? _findMetric(
+      List<Map<String, dynamic>> items, String key) {
+    for (final item in items) {
+      if (item['key']?.toString() == key) {
+        return item;
+      }
+    }
+    return items.isNotEmpty ? items.first : null;
   }
 
   bool _hasDashboardData(Map<String, dynamic> data) {
@@ -512,7 +558,154 @@ class HealthProvider extends ChangeNotifier {
     }
 
     _metricsUsingBackend = true;
+    _isUsingCachedData = false;
+    _cachedAt = null;
     _errorMessage = null;
+  }
+
+  String _liveCacheKey(String userId) {
+    return '${_liveCachePrefix}_$userId';
+  }
+
+  Future<void> _saveLiveCache(String userId) async {
+    final vitals = _currentVitals;
+    final analysis = _currentAnalysis;
+    if (vitals == null || analysis == null) {
+      return;
+    }
+
+    final payload = <String, dynamic>{
+      'user_id': userId,
+      'saved_at': DateTime.now().toIso8601String(),
+      'vitals': {
+        'heart_rate': vitals.heartRate,
+        'spo2': vitals.spo2,
+        'systolic_bp': vitals.systolicBP,
+        'diastolic_bp': vitals.diastolicBP,
+        'temperature': vitals.temperature,
+        'timestamp': vitals.timestamp.toIso8601String(),
+        'device_name': vitals.deviceName,
+      },
+      'analysis': {
+        'risk_level': analysis.riskLevel.name,
+        'risk_score': analysis.riskScore,
+        'risk_category': analysis.riskCategory,
+        'summary': analysis.summary,
+        'key_finding': analysis.keyFinding,
+        'analysis_data': analysis.analysisData,
+        'timestamp': analysis.timestamp.toIso8601String(),
+      },
+      'live': {
+        'phase': _livePhase,
+        'remaining_seconds': _livePhaseRemainingSeconds,
+        'instruction': _liveInstruction,
+      },
+      'metrics': {
+        'avg_heart_rate': _avgHeartRate,
+        'avg_spo2': _avgSpo2,
+        'systolic_bp': _systolicBp,
+        'diastolic_bp': _diastolicBp,
+        'temperature': _temperature,
+      },
+    };
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_liveCacheKey(userId), jsonEncode(payload));
+  }
+
+  Future<bool> _restoreLiveCache(String userId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_liveCacheKey(userId));
+    if (raw == null || raw.isEmpty) {
+      return false;
+    }
+
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map<String, dynamic>) {
+        return false;
+      }
+
+      final cachedUser = decoded['user_id']?.toString();
+      if (cachedUser != null && cachedUser != userId) {
+        return false;
+      }
+
+      final vitals = decoded['vitals'];
+      final analysis = decoded['analysis'];
+      if (vitals is! Map<String, dynamic> ||
+          analysis is! Map<String, dynamic>) {
+        return false;
+      }
+
+      _currentVitals = VitalReading(
+        id: 'cached_latest',
+        userId: userId,
+        heartRate: _toDouble(vitals['heart_rate']).round(),
+        spo2: _toDouble(vitals['spo2']),
+        systolicBP: _toDouble(vitals['systolic_bp']).round(),
+        diastolicBP: _toDouble(vitals['diastolic_bp']).round(),
+        temperature: _toDouble(vitals['temperature']),
+        timestamp: DateTime.tryParse(
+              vitals['timestamp']?.toString() ?? '',
+            ) ??
+            DateTime.now(),
+        deviceName: vitals['device_name']?.toString() ?? 'Cached',
+      );
+
+      final riskLevel = _mapRiskLevel(analysis['risk_level']?.toString() ?? '');
+      _currentAnalysis = HealthAnalysis(
+        id: 'cached_analysis',
+        userId: userId,
+        riskLevel: riskLevel,
+        riskScore: _toDouble(analysis['risk_score']),
+        riskCategory: analysis['risk_category']?.toString() ?? 'Clinical Risk',
+        summary: analysis['summary']?.toString() ?? 'Cached live risk summary.',
+        keyFinding: analysis['key_finding']?.toString() ?? '',
+        contributingFactors: const [],
+        recentAlerts: const [],
+        analysisData: Map<String, dynamic>.from(
+          analysis['analysis_data'] is Map
+              ? analysis['analysis_data'] as Map
+              : <String, dynamic>{},
+        ),
+        timestamp: DateTime.tryParse(
+              analysis['timestamp']?.toString() ?? '',
+            ) ??
+            DateTime.now(),
+      );
+
+      final live = decoded['live'];
+      if (live is Map<String, dynamic>) {
+        final rawPhase = live['phase']?.toString().toLowerCase();
+        _livePhase = rawPhase == 'cooldown' ? 'cooldown' : 'measuring';
+        _livePhaseRemainingSeconds =
+            _toDouble(live['remaining_seconds']).round();
+        final instruction = live['instruction']?.toString().trim();
+        if (instruction != null && instruction.isNotEmpty) {
+          _liveInstruction = instruction;
+        }
+      }
+
+      final metrics = decoded['metrics'];
+      if (metrics is Map<String, dynamic>) {
+        _avgHeartRate = _toDouble(metrics['avg_heart_rate']);
+        _avgSpo2 = _toDouble(metrics['avg_spo2']);
+        _systolicBp = _toDouble(metrics['systolic_bp']).round();
+        _diastolicBp = _toDouble(metrics['diastolic_bp']).round();
+        _temperature = _toDouble(metrics['temperature']);
+      }
+
+      final savedAtRaw = decoded['saved_at']?.toString();
+      _cachedAt = savedAtRaw == null
+          ? _currentVitals?.timestamp
+          : DateTime.tryParse(savedAtRaw) ?? _currentVitals?.timestamp;
+      _metricsUsingBackend = true;
+      _isUsingCachedData = true;
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   void _clearDashboard() {
@@ -522,6 +715,8 @@ class HealthProvider extends ChangeNotifier {
     _livePhaseRemainingSeconds = 0;
     _liveInstruction = 'Measuring... keep your hand steady.';
     _metricsUsingBackend = false;
+    _isUsingCachedData = false;
+    _cachedAt = null;
   }
 
   void _clearMetrics() {
@@ -602,5 +797,84 @@ class HealthProvider extends ChangeNotifier {
     }
 
     return null;
+  }
+
+  String? _extractBackendMessage(Map<String, dynamic> payload) {
+    final topLevelMessage = payload['message']?.toString().trim();
+    if (topLevelMessage != null && topLevelMessage.isNotEmpty) {
+      return topLevelMessage;
+    }
+
+    final topLevelError = payload['error']?.toString().trim();
+    if (topLevelError != null && topLevelError.isNotEmpty) {
+      return topLevelError;
+    }
+
+    final data = payload['data'];
+    if (data is Map<String, dynamic>) {
+      final nestedMessage = data['message']?.toString().trim();
+      if (nestedMessage != null && nestedMessage.isNotEmpty) {
+        return nestedMessage;
+      }
+
+      final nestedError = data['error']?.toString().trim();
+      if (nestedError != null && nestedError.isNotEmpty) {
+        return nestedError;
+      }
+    }
+
+    return null;
+  }
+
+  Map<String, dynamic>? _latestVitalsPayload() {
+    final vitals = _currentVitals;
+    if (vitals == null) {
+      if (_avgHeartRate == 0 && _avgSpo2 == 0 && _temperature == 0) {
+        return null;
+      }
+
+      return <String, dynamic>{
+        'bpm': _avgHeartRate.round(),
+        'spo2': _avgSpo2,
+        'temperature': _temperature,
+        'systolic_bp': _systolicBp,
+        'diastolic_bp': _diastolicBp,
+      };
+    }
+
+    return <String, dynamic>{
+      'bpm': vitals.heartRate,
+      'spo2': vitals.spo2,
+      'temperature': vitals.temperature,
+      'systolic_bp': vitals.systolicBP,
+      'diastolic_bp': vitals.diastolicBP,
+    };
+  }
+
+  String _buildRecentHistorySummary() {
+    if (_vitalsHistory.isEmpty) {
+      if (_currentVitals == null) {
+        return '';
+      }
+
+      final v = _currentVitals!;
+      return 'Current vitals only: HR ${v.heartRate} bpm, SpO2 ${v.spo2.toStringAsFixed(1)}%, Temp ${v.temperature.toStringAsFixed(1)}C, BP ${v.systolicBP}/${v.diastolicBP}.';
+    }
+
+    final recent = _vitalsHistory.take(12).toList();
+    final hrAvg =
+        recent.map((r) => r.heartRate).reduce((a, b) => a + b) / recent.length;
+    final spo2Avg =
+        recent.map((r) => r.spo2).reduce((a, b) => a + b) / recent.length;
+    final tempAvg = recent.map((r) => r.temperature).reduce((a, b) => a + b) /
+        recent.length;
+    final sbpAvg =
+        recent.map((r) => r.systolicBP).reduce((a, b) => a + b) / recent.length;
+    final dbpAvg = recent.map((r) => r.diastolicBP).reduce((a, b) => a + b) /
+        recent.length;
+
+    final latest = recent.first;
+
+    return 'Recent trend (${recent.length} readings): avg HR ${hrAvg.toStringAsFixed(0)} bpm, avg SpO2 ${spo2Avg.toStringAsFixed(1)}%, avg Temp ${tempAvg.toStringAsFixed(1)}C, avg BP ${sbpAvg.toStringAsFixed(0)}/${dbpAvg.toStringAsFixed(0)}. Latest reading: HR ${latest.heartRate}, SpO2 ${latest.spo2.toStringAsFixed(1)}%, Temp ${latest.temperature.toStringAsFixed(1)}C, BP ${latest.systolicBP}/${latest.diastolicBP}.';
   }
 }

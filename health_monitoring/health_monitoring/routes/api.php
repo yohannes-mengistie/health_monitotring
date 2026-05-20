@@ -19,6 +19,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/health/analysis-v2', [AiRecommendationController::class, 'analyze']);
     Route::get('/health/live-status', [SensorController::class, 'getLiveStatus']);
     Route::get('/health/metrics-overview', [SensorController::class, 'getMetricsOverview']);
+    Route::get('/health/metrics-history', [SensorController::class, 'getMetricsHistory']);
     Route::patch('/update', [SensorController::class, 'update']);
 });
 

@@ -36,6 +36,19 @@ class RiskStatusCard extends StatelessWidget {
     }
   }
 
+  String _getRiskMessage() {
+    switch (analysis.riskLevel) {
+      case RiskLevel.low:
+        return 'Vitals are stable. Keep maintaining your healthy routine.';
+      case RiskLevel.moderate:
+        return 'Some vitals are slightly out of range. Monitor closely and recheck soon.';
+      case RiskLevel.high:
+        return 'Multiple vitals are elevated. Limit exertion and consult your care provider.';
+      case RiskLevel.critical:
+        return 'Critical readings detected. Seek urgent medical attention immediately.';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -80,7 +93,7 @@ class RiskStatusCard extends StatelessWidget {
                           ),
                     ),
                     Text(
-                      'Vitals are ${analysis.riskLevel.name}. Keep up the good work!',
+                      _getRiskMessage(),
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: AppTheme.darkGray,
                           ),

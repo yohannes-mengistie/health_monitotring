@@ -2,18 +2,18 @@ import 'package:flutter/material.dart';
 
 class AppTheme {
   // Color Palette
-  static const Color primaryBlue = Color(0xFF4F46E5); // Primary brand color
-  static const Color primaryDark = Color(0xFF1F2937); // Dark background
-  static const Color accentGreen = Color(0xFF10B981); // Positive/normal status
-  static const Color accentOrange = Color(0xFFF59E0B); // Warning/elevated
-  static const Color accentRed = Color(0xFFEF4444); // Critical/alert
-  static const Color accentPurple = Color(0xFFA78BFA); // Secondary accent
+  static const Color primaryBlue = Color(0xFF22C55E); // Normal Green
+  static const Color primaryDark = Color(0xFF0F172A); // Text primary
+  static const Color accentGreen = Color(0xFF22C55E); // Normal Green
+  static const Color accentOrange = Color(0xFFF59E0B); // Slight risk
+  static const Color accentRed = Color(0xFFEF4444); // Critical
+  static const Color accentPurple = Color(0xFF3B82F6); // Info Blue
 
   static const Color white = Color(0xFFFFFFFF);
-  static const Color lightGray = Color(0xFFF3F4F6);
-  static const Color mediumGray = Color(0xFFE5E7EB);
-  static const Color darkGray = Color(0xFF6B7280);
-  static const Color veryDarkGray = Color(0xFF374151);
+  static const Color lightGray = Color(0xFFF8FAFC); // Background
+  static const Color mediumGray = Color(0xFFE5E7EB); // Divider
+  static const Color darkGray = Color(0xFF64748B); // Text secondary
+  static const Color veryDarkGray = Color(0xFF0F172A); // Text primary
 
   // Semantic colors
   static const Color successColor = accentGreen;
@@ -26,11 +26,11 @@ class AppTheme {
       useMaterial3: true,
       colorScheme: ColorScheme.light(
         primary: primaryBlue,
-        secondary: accentPurple,
-        tertiary: accentGreen,
+        secondary: accentGreen,
+        tertiary: accentPurple,
         error: accentRed,
-        background: white,
-        surface: lightGray,
+        background: lightGray,
+        surface: white,
         onPrimary: white,
         onSecondary: white,
         onError: white,
@@ -54,7 +54,8 @@ class AppTheme {
         elevation: 8,
         selectedItemColor: primaryBlue,
         unselectedItemColor: darkGray,
-        selectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        selectedLabelStyle:
+            const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
         unselectedLabelStyle: const TextStyle(fontSize: 11),
       ),
       cardTheme: CardThemeData(

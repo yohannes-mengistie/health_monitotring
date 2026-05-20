@@ -1,11 +1,11 @@
 name: health_monitor_ai
 description: "AI-powered health monitoring system with risk analysis and personalized recommendations."
-publish_to: 'none'
+publish_to: "none"
 
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: ">=3.0.0 <4.0.0"
 
 dependencies:
   flutter:
@@ -41,6 +41,10 @@ dependencies:
 
   # Biometric Authentication
   local_auth: ^2.1.0
+
+  # PDF Export
+  pdf: ^3.11.0
+  printing: ^5.12.0
 
   # Environment Configuration
   flutter_dotenv: ^5.1.0

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:health_monitor_ai/config/app_theme.dart';
 import 'package:health_monitor_ai/providers/auth_provider.dart';
+import 'package:health_monitor_ai/providers/health_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -115,27 +116,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _buildSettingsItem(
               context: context,
               icon: Icons.devices_other,
-              title: 'HealthWatch Pro',
-              subtitle: 'Connected • Battery 84%',
+              title: 'EthioBio',
+              subtitle: 'Connected',
               trailing: const Icon(Icons.chevron_right),
             ),
-            const SizedBox(height: 8),
-            _buildSettingsItem(
-              context: context,
-              icon: Icons.ring_volume,
-              title: 'Oura Ring Gen3',
-              subtitle: 'Not Connected',
-              trailing: const Padding(
-                padding: EdgeInsets.all(8),
-                child: Text(
-                  'Pair',
-                  style: TextStyle(
-                    color: AppTheme.primaryBlue,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
+            // const SizedBox(height: 8),
+            // _buildSettingsItem(
+            //   context: context,
+            //   icon: Icons.ring_volume,
+            //   title: 'Oura Ring Gen3',
+            //   subtitle: 'Not Connected',
+            //   trailing: const Padding(
+            //     padding: EdgeInsets.all(8),
+            //     child: Text(
+            //       'Pair',
+            //       style: TextStyle(
+            //         color: AppTheme.primaryBlue,
+            //         fontWeight: FontWeight.w600,
+            //       ),
+            //     ),
+            //   ),
+            // ),
             const SizedBox(height: 24),
             // Alerts & Thresholds
             _buildSectionTitle(context, 'ALERTS & THRESHOLDS'),
@@ -619,6 +620,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           TextButton(
             onPressed: () async {
+              context.read<HealthProvider>().resetUserState();
               await context.read<AuthProvider>().logout();
               if (!context.mounted) return;
               Navigator.pushNamedAndRemoveUntil(

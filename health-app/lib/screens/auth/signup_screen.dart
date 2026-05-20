@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:health_monitor_ai/config/app_theme.dart';
 import 'package:health_monitor_ai/providers/auth_provider.dart';
+import 'package:health_monitor_ai/providers/health_provider.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({Key? key}) : super(key: key);
@@ -21,8 +22,6 @@ class _SignupScreenState extends State<SignupScreen> {
   late TextEditingController _dobController;
   late TextEditingController _weightController;
   late TextEditingController _heightController;
-  late TextEditingController _diastolicBpController;
-  late TextEditingController _systolicBpController;
 
   String _selectedGender = 'male';
   bool _obscurePassword = true;
@@ -40,8 +39,6 @@ class _SignupScreenState extends State<SignupScreen> {
     _dobController = TextEditingController();
     _weightController = TextEditingController();
     _heightController = TextEditingController();
-    _diastolicBpController = TextEditingController();
-    _systolicBpController = TextEditingController();
   }
 
   @override
@@ -54,8 +51,6 @@ class _SignupScreenState extends State<SignupScreen> {
     _dobController.dispose();
     _weightController.dispose();
     _heightController.dispose();
-    _diastolicBpController.dispose();
-    _systolicBpController.dispose();
     super.dispose();
   }
 
@@ -113,10 +108,9 @@ class _SignupScreenState extends State<SignupScreen> {
         gender: _selectedGender,
         weight: double.parse(_weightController.text.trim()),
         height: double.parse(_heightController.text.trim()),
-        diastolicBp: double.parse(_diastolicBpController.text.trim()),
-        systolicBp: double.parse(_systolicBpController.text.trim()),
         age: _calculateAge(_selectedDob!),
       );
+      context.read<HealthProvider>().resetUserState();
 
       if (mounted) {
         Navigator.pushReplacementNamed(context, '/dashboard');
@@ -355,53 +349,6 @@ class _SignupScreenState extends State<SignupScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _diastolicBpController,
-                        decoration: const InputDecoration(
-                          labelText: 'Diastolic BP',
-                          hintText: '80',
-                        ),
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Diastolic BP required';
-                          }
-                          if (double.tryParse(value.trim()) == null) {
-                            return 'Invalid value';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _systolicBpController,
-                        decoration: const InputDecoration(
-                          labelText: 'Systolic BP',
-                          hintText: '120',
-                        ),
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Systolic BP required';
-                          }
-                          if (double.tryParse(value.trim()) == null) {
-                            return 'Invalid value';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                  ],
-                ),
                 const SizedBox(height: 24),
                 Consumer<AuthProvider>(
                   builder: (context, authProvider, _) {

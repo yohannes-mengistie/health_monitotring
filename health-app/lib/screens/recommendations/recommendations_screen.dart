@@ -15,20 +15,354 @@ class RecommendationsScreen extends StatefulWidget {
 
 class _RecommendationsScreenState extends State<RecommendationsScreen> {
   String? _selectedLanguageCode;
+  final Set<String> _selectedSymptomKeys = <String>{};
+  bool _noQuickSymptoms = false;
+  int _followUpIndex = 0;
+  final Map<String, _OpqrstAnswers> _opqrstAnswers = {};
+  bool? _redFlagAnswer;
+
+  bool _hasHypertension = false;
+  bool _hasDiabetes = false;
+  bool _hasHighCholesterol = false;
+  String? _medicationAnswer;
+  bool _noBackgroundConditions = false;
+
+  bool _isAmharic(BuildContext context) {
+    final localeCode = Localizations.localeOf(context).languageCode;
+    final selectedCode = _selectedLanguageCode ?? localeCode;
+    return selectedCode.toLowerCase().startsWith('am');
+  }
+
+  String _t(BuildContext context, String key) {
+    final isAmharic = _isAmharic(context);
+    final entry = _uiText[key];
+    if (entry == null) {
+      return key;
+    }
+    return isAmharic
+        ? (entry['am'] ?? entry['en'] ?? key)
+        : (entry['en'] ?? key);
+  }
+
+  List<String> _onsetOptions(BuildContext context) {
+    return _isAmharic(context)
+        ? ['አሁን', 'ከ1 ሰዓት በታች', 'ዛሬ', 'ቀስ በቀስ']
+        : ['Just now', '< 1 hour', 'Today', 'Gradually'];
+  }
+
+  List<String> _timingOptions(BuildContext context) {
+    return _isAmharic(context)
+        ? ['ቋሚ', 'እየመለሰ የሚመጣ']
+        : ['Constant', 'Intermittent'];
+  }
+
+  List<String> _medicationOptions(BuildContext context) {
+    return _isAmharic(context)
+        ? ['አዎ', 'አይ', 'ረስቻለሁ']
+        : ['Yes', 'No', 'Forgot'];
+  }
+
+  List<_SymptomOption> _symptomOptions(BuildContext context) {
+    final isAmharic = _isAmharic(context);
+    return [
+      _SymptomOption(
+        key: 'chest_pain',
+        label: isAmharic ? 'የደረት ህመም' : 'Chest Pain',
+        icon: Icons.favorite_outline,
+        isHighRisk: true,
+        qualityQuestion:
+            isAmharic ? 'ህመሙ እንዴት ይሰማል?' : 'How does the pain feel?',
+        qualityOptions: isAmharic
+            ? ['ግፊት', 'ስር የሚቆርጥ', 'የሚነድ', 'ጥብቅነት']
+            : ['Pressure', 'Sharp', 'Burning', 'Tightness'],
+      ),
+      _SymptomOption(
+        key: 'dizziness',
+        label: isAmharic ? 'ራስ ማዞር' : 'Dizziness',
+        icon: Icons.motion_photos_on_outlined,
+        isHighRisk: true,
+        qualityQuestion:
+            isAmharic ? 'የሚሰማዎትን ምን ይገልጻል?' : 'What best describes it?',
+        qualityOptions: isAmharic
+            ? ['ክፍሉ እንደሚዞር', 'ድንጋጤ/ብርሃን ማለት', 'ሚዛን መጣስ']
+            : ['Room spinning', 'Faint/lightheaded', 'Off-balance'],
+      ),
+      _SymptomOption(
+        key: 'shortness_of_breath',
+        label: isAmharic ? 'የትንፋሽ እጥረት' : 'Shortness of Breath',
+        icon: Icons.air,
+        qualityQuestion: isAmharic ? 'በመቼ ጊዜ ይሻላል?' : 'When is it worse?',
+        qualityOptions: isAmharic
+            ? ['በእረፍት ጊዜ', 'እንቅስቃሴ ሲኖር', 'ሲደበቅ/ሲጋለጥ', 'በድንገት ይመጣ']
+            : ['At rest', 'With activity', 'Lying down', 'Sudden episodes'],
+      ),
+      _SymptomOption(
+        key: 'headache',
+        label: isAmharic ? 'ራስ ህመም' : 'Headache',
+        icon: Icons.psychology_alt_outlined,
+        qualityQuestion: isAmharic ? 'የህመሙ አይነት' : 'Pain quality',
+        qualityOptions: isAmharic
+            ? ['የሚያምር', 'ግፊት', 'ስር የሚቆርጥ', 'ገመድ እንደተጠበቀ']
+            : ['Throbbing', 'Pressure', 'Sharp', 'Band-like tightness'],
+      ),
+      _SymptomOption(
+        key: 'fatigue',
+        label: isAmharic ? 'ድካም' : 'Fatigue',
+        icon: Icons.battery_alert_outlined,
+        qualityQuestion:
+            isAmharic ? 'እንዴት ይገልጹታል?' : 'How would you describe it?',
+        qualityOptions: isAmharic
+            ? ['ዝቅተኛ ኃይል', 'እንቅልፍ መስሎኝ', 'የጡንቻ ድካም', 'የአእምሮ ጭጋግ']
+            : ['Low energy', 'Sleepy', 'Muscle weakness', 'Mental fog'],
+      ),
+    ];
+  }
+
+  List<_SymptomOption> _selectedSymptoms(BuildContext context) {
+    return _symptomOptions(context)
+        .where((item) => _selectedSymptomKeys.contains(item.key))
+        .toList();
+  }
+
+  _SymptomOption? _currentSymptom(BuildContext context) {
+    final selected = _selectedSymptoms(context);
+    if (selected.isEmpty) return null;
+    final index = _followUpIndex.clamp(0, selected.length - 1);
+    return selected[index];
+  }
+
+  _SymptomOption? _primarySymptom(BuildContext context) {
+    final selected = _selectedSymptoms(context);
+    if (selected.isEmpty) return null;
+    return selected.first;
+  }
+
+  _OpqrstAnswers _answersFor(String symptomKey) {
+    return _opqrstAnswers.putIfAbsent(
+      symptomKey,
+      () => const _OpqrstAnswers(),
+    );
+  }
+
+  bool _isSymptomAssessmentComplete(String symptomKey) {
+    final answers = _opqrstAnswers[symptomKey];
+    if (answers == null) return false;
+    return answers.onset != null &&
+        answers.quality != null &&
+        answers.timing != null &&
+        answers.severity != null;
+  }
+
+  bool _hasAnyHighRiskSymptom(BuildContext context) {
+    for (final symptom in _selectedSymptoms(context)) {
+      if (symptom.isHighRisk) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool _isCoreAssessmentComplete(BuildContext context) {
+    if (_noQuickSymptoms) {
+      return _medicationAnswer != null;
+    }
+
+    if (_selectedSymptomKeys.isEmpty) return false;
+
+    final selected = _selectedSymptoms(context);
+    for (final symptom in selected) {
+      if (!_isSymptomAssessmentComplete(symptom.key)) {
+        return false;
+      }
+    }
+
+    if (_medicationAnswer == null) return false;
+    if (_hasAnyHighRiskSymptom(context) && _redFlagAnswer == null) return false;
+    return true;
+  }
+
+  static const Map<String, Map<String, String>> _uiText = {
+    'title': {
+      'en': 'AI Clinical Recommendations',
+      'am': 'የAI ክሊኒካል ምክሮች',
+    },
+    'languageTooltip': {
+      'en': 'Change recommendation language',
+      'am': 'የምክር ቋንቋ ቀይር',
+    },
+    'noBriefTitle': {
+      'en': 'No Clinical Brief Yet',
+      'am': 'ገና የክሊኒካል ማጠቃለያ የለም',
+    },
+    'noBriefMessage': {
+      'en': 'No recommendation details available yet.',
+      'am': 'የምክር ዝርዝሮች ገና አልተገኙም።',
+    },
+    'getRecommendation': {
+      'en': 'Get Recommendation',
+      'am': 'ምክር አግኝ',
+    },
+    'tellAi': {
+      'en': 'how you feel now ?',
+      'am': 'አሁን ምን ይሰማሃል?',
+    },
+    'quickSymptoms': {
+      'en': 'Quick Symptoms',
+      'am': 'ፈጣን ምልክቶች',
+    },
+    'quickSymptomsHint': {
+      'en': 'Select all symptoms that apply, or skip if you have none.',
+      'am': 'ስለሚፈልጉ ምልክቶች ሁሉንም ይምረጡ፣ የለም ከሆነ ይዝለሉ።',
+    },
+    'noQuickSymptoms': {
+      'en': 'No quick symptoms right now',
+      'am': 'በአሁኑ ጊዜ ፈጣን ምልክት የለም',
+    },
+    'primarySymptom': {
+      'en': 'Primary symptom for OPQRST follow-up',
+      'am': 'ለOPQRST ተከታታይ ዋና ምልክት',
+    },
+    'followUp': {
+      'en': 'Follow-up (OPQRST)',
+      'am': 'ተከታታይ (OPQRST)',
+    },
+    'onsetTitle': {
+      'en': 'Onset: When did this start?',
+      'am': 'መጀመሪያ: መቼ ጀመረዎ?',
+    },
+    'timingTitle': {
+      'en': 'Timing: Is it constant or intermittent?',
+      'am': 'ጊዜ: ቋሚ ነው ወይስ እየመለሰ የሚመጣ?',
+    },
+    'severityLabel': {
+      'en': 'Severity',
+      'am': 'የህመም ጥንካሬ',
+    },
+    'redFlag': {
+      'en': 'Red Flag Check',
+      'am': 'የአደገኛ ምልክት ምርመራ',
+    },
+    'redFlagQuestion': {
+      'en':
+          'Are you also experiencing numbness, slurred speech, or severe pressure?',
+      'am': 'የሰውነት መደንዘዝ፣ የመንተባተብ (ንግግር መክበድ) ወይም ከፍተኛ ግፊት እየተሰማዎት ነው?',
+    },
+    'callEmergency': {
+      'en': 'CALL EMERGENCY',
+      'am': 'አስቸኳይ ይደውሉ',
+    },
+    'emergencyMessage': {
+      'en':
+          'Emergency warning: seek immediate medical help or call emergency services now.',
+      'am': 'አስቸኳይ ማስጠንቀቂያ: አሁን ወዲያውኑ የህክምና እርዳታ ይፈልጉ ወይም አስቸኳይ አገልግሎት ይደውሉ።',
+    },
+    'yes': {
+      'en': 'Yes',
+      'am': 'አዎ',
+    },
+    'no': {
+      'en': 'No',
+      'am': 'አይ',
+    },
+    'background': {
+      'en': 'Background',
+      'am': 'ጀርባ መረጃ',
+    },
+    'hypertension': {
+      'en': 'Hypertension',
+      'am': 'የደም ግፊት',
+    },
+    'diabetes': {
+      'en': 'Diabetes',
+      'am': 'የስኳር በሽታ',
+    },
+    'cholesterol': {
+      'en': 'High Cholesterol',
+      'am': 'ከፍተኛ ኮሌስተሮል',
+    },
+    'medicationQuestion': {
+      'en': 'Did you take your prescribed medication today?',
+      'am': 'ዛሬ የታዘዘውን መድኃኒት ወስደዋል?',
+    },
+    'submit': {
+      'en': 'Submit to AI',
+      'am': 'ለAI ላክ',
+    },
+    'submitting': {
+      'en': 'Submitting...',
+      'am': 'በመላክ ላይ...',
+    },
+    'completeAll': {
+      'en': 'Complete symptom, OPQRST, and medication check to submit.',
+      'am': 'ለማቅረብ ምልክት፣ OPQRST እና መድሀኒት መረጃ ይሙሉ።',
+    },
+    'completeMedication': {
+      'en': 'Complete the medication check to submit.',
+      'am': 'ለማቅረብ የመድሀኒት መረጃ ብቻ ይሙሉ።',
+    },
+    'clinicalActionPlan': {
+      'en': 'Clinical Action Plan',
+      'am': 'የክሊኒካል የተግባር እቅድ',
+    },
+    'noDetails': {
+      'en': 'No recommendation details available yet.',
+      'am': 'የምክር ዝርዝሮች ገና አልተገኙም።',
+    },
+    'aiBrief': {
+      'en': 'AI Clinical Brief',
+      'am': 'የAI ክሊኒካል ማጠቃለያ',
+    },
+    'briefSubtitle': {
+      'en':
+          'Structured and safety-first recommendation based on your latest analysis.',
+      'am': 'በመጨረሻ ትንታኔዎ ላይ የተመሰረተ የተዋቀረ እና የደህንነት ቅድሚያ ያለው ምክር።',
+    },
+    'updatedLabel': {
+      'en': 'Updated',
+      'am': 'የተዘመነ',
+    },
+    'noQuickSymptomsReported': {
+      'en': 'No quick symptoms reported',
+      'am': 'ፈጣን ምልክት አልተመዘገበም',
+    },
+    'newRecommendation': {
+      'en': 'Get New Recommendation',
+      'am': 'አዲስ ምክር አግኝ',
+    },
+    'generatingRecommendation': {
+      'en': 'Generating Recommendation...',
+      'am': 'ምክር በመፍጠር ላይ...',
+    },
+    'sections': {
+      'en': 'Sections',
+      'am': 'ክፍሎች',
+    },
+    'actionItems': {
+      'en': 'Action Items',
+      'am': 'የተግባር ነጥቦች',
+    },
+    'amharicLabel': {
+      'en': 'Amharic',
+      'am': 'አማርኛ',
+    },
+    'englishLabel': {
+      'en': 'English',
+      'am': 'እንግሊዝኛ',
+    },
+  };
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadRecommendation();
+      if (!mounted) return;
+      setState(() {
+        _selectedLanguageCode = Localizations.localeOf(context).languageCode;
+      });
     });
   }
 
   Future<void> _loadRecommendation() async {
-    await _loadRecommendationForLanguage(_selectedLanguageCode);
-  }
-
-  Future<void> _loadRecommendationForLanguage(String? languageCode) async {
     final authProvider = context.read<AuthProvider>();
     final healthProvider = context.read<HealthProvider>();
     final user = authProvider.currentUser;
@@ -37,18 +371,36 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
     }
 
     final localeCode = Localizations.localeOf(context).languageCode;
-    final selectedCode = languageCode ?? _selectedLanguageCode ?? localeCode;
+    final selectedCode = _selectedLanguageCode ?? localeCode;
     final language =
         selectedCode.toLowerCase().startsWith('am') ? 'amharic' : 'english';
 
-    setState(() {
-      _selectedLanguageCode = selectedCode;
-    });
+    final selectedSymptom = _primarySymptom(context);
+    if (!_noQuickSymptoms && selectedSymptom == null) {
+      return;
+    }
+
+    if (!_isCoreAssessmentComplete(context)) {
+      return;
+    }
+
+    final structuredAssessment = _buildStructuredAssessment(context);
+
+    final selectedLabels = _noQuickSymptoms
+        ? _t(context, 'noQuickSymptomsReported')
+        : _buildSymptomSummary(context);
+    final vitalsSummary = _buildVitalsSummary(healthProvider);
+    final feelingParts = <String>[selectedLabels];
+    if (vitalsSummary != null) {
+      feelingParts.add(vitalsSummary);
+    }
 
     await healthProvider.loadClinicalRecommendation(
       userId: user.id,
       token: authProvider.authToken,
       language: language,
+      currentFeeling: feelingParts.join(' | '),
+      structuredAssessment: structuredAssessment,
     );
   }
 
@@ -66,7 +418,7 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
             children: [
               ListTile(
                 leading: const Icon(Icons.language),
-                title: const Text('English'),
+                title: Text(_t(context, 'englishLabel')),
                 trailing: currentCode.startsWith('en')
                     ? const Icon(Icons.check)
                     : null,
@@ -74,7 +426,7 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
               ),
               ListTile(
                 leading: const Icon(Icons.translate),
-                title: const Text('Amharic (አማርኛ)'),
+                title: Text(_t(context, 'amharicLabel')),
                 trailing: currentCode.startsWith('am')
                     ? const Icon(Icons.check)
                     : null,
@@ -90,201 +442,1023 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
       return;
     }
 
-    await _loadRecommendationForLanguage(selected);
+    setState(() {
+      _selectedLanguageCode = selected;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('AI Clinical Recommendations'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.language),
-            tooltip: 'Change recommendation language',
-            onPressed: _showLanguagePicker,
+    final baseTheme = Theme.of(context);
+    final theme = _isAmharic(context)
+        ? baseTheme.copyWith(
+            textTheme: _amharicTextTheme(baseTheme.textTheme),
+          )
+        : baseTheme;
+
+    return Theme(
+      data: theme,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(_t(context, 'title')),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.pop(context),
           ),
-        ],
-      ),
-      body: Consumer<HealthProvider>(
-        builder: (context, healthProvider, _) {
-          if (healthProvider.currentRecommendation == null) {
-            if (healthProvider.isLoading) {
-              return const Center(
-                child: CircularProgressIndicator(),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.language),
+              tooltip: _t(context, 'languageTooltip'),
+              onPressed: _showLanguagePicker,
+            ),
+          ],
+        ),
+        body: Consumer<HealthProvider>(
+          builder: (context, healthProvider, _) {
+            if (healthProvider.currentRecommendation == null) {
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      children: [
+                        if (healthProvider.isLoading) ...[
+                          const SizedBox(height: 2),
+                          const LinearProgressIndicator(minHeight: 2),
+                          const SizedBox(height: 12),
+                        ],
+                        _buildPromptComposer(
+                          context,
+                          healthProvider,
+                          minHeight: _promptMinHeight(context),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               );
             }
 
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
+            final recommendation = healthProvider.currentRecommendation!;
+            final localeCode = Localizations.localeOf(context).languageCode;
+            final parsedReport = _LocalizedReport.fromRawText(
+              _normalizeRecommendationText(recommendation.actionPlan),
+              recommendation.medicalDisclaimer,
+            );
+
+            final preferredLanguage = _selectedLanguageCode ?? localeCode;
+            final reportVersion = parsedReport.versionFor(preferredLanguage) ??
+                parsedReport.firstAvailable;
+
+            if (reportVersion == null) {
+              return Center(
+                child: Text(_t(context, 'noDetails')),
+              );
+            }
+
+            return Stack(
+              children: [
+                Container(
                   decoration: BoxDecoration(
-                    color: AppTheme.white,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: AppTheme.mediumGray),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryBlue.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: const Icon(
-                          Icons.medical_services_outlined,
-                          color: AppTheme.primaryBlue,
-                          size: 28,
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      Text(
-                        'No Clinical Brief Yet',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        healthProvider.errorMessage ??
-                            'No recommendation details available yet.',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                      const SizedBox(height: 14),
-                      ElevatedButton.icon(
-                        onPressed: _loadRecommendation,
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('Try Again'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          }
-
-          final recommendation = healthProvider.currentRecommendation!;
-          final localeCode = Localizations.localeOf(context).languageCode;
-          final parsedReport = _LocalizedReport.fromRawText(
-            recommendation.actionPlan,
-            recommendation.medicalDisclaimer,
-          );
-
-          final preferredLanguage = _selectedLanguageCode ?? localeCode;
-          final reportVersion = parsedReport.versionFor(preferredLanguage) ??
-              parsedReport.firstAvailable;
-
-          if (reportVersion == null) {
-            return const Center(
-              child: Text('No recommendation details available yet.'),
-            );
-          }
-
-          return Stack(
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      AppTheme.primaryBlue.withOpacity(0.08),
-                      AppTheme.lightGray,
-                      AppTheme.lightGray,
-                    ],
-                  ),
-                ),
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildClinicalHeader(
-                        context,
-                        healthProvider.currentAnalysis,
-                        recommendation,
-                      ),
-                      if (parsedReport.hasMultipleLanguages) ...[
-                        const SizedBox(height: 16),
-                        _buildLanguageToggle(
-                          context,
-                          parsedReport,
-                          reportVersion.languageCode,
-                        ),
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        AppTheme.primaryBlue.withOpacity(0.08),
+                        AppTheme.lightGray,
+                        AppTheme.lightGray,
                       ],
-                      const SizedBox(height: 16),
-                      _buildReportSummaryCard(
-                        context: context,
-                        recommendation: recommendation,
-                        sectionCount: reportVersion.sections.length,
-                        itemCount: _contentItemCount(reportVersion),
-                        languageCode: reportVersion.languageCode,
-                      ),
-                      const SizedBox(height: 18),
-                      Row(
-                        children: [
-                          Container(
-                            width: 4,
-                            height: 18,
-                            decoration: BoxDecoration(
-                              color: AppTheme.primaryBlue,
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Clinical Action Plan',
-                            style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                  ),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildPromptComposer(
+                          context,
+                          healthProvider,
+                          minHeight: _promptMinHeight(context),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildClinicalHeader(
+                          context,
+                          healthProvider.currentAnalysis,
+                          recommendation,
+                          onRefreshPressed: _loadRecommendation,
+                          isRefreshing: healthProvider.isLoading,
+                        ),
+                        if (parsedReport.hasMultipleLanguages) ...[
+                          const SizedBox(height: 16),
+                          _buildLanguageToggle(
+                            context,
+                            parsedReport,
+                            reportVersion.languageCode,
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 12),
-                      ...reportVersion.sections.map(
-                        (section) => Padding(
-                          padding: const EdgeInsets.only(bottom: 14),
-                          child: _buildSectionCard(context, section),
+                        const SizedBox(height: 16),
+                        _buildReportSummaryCard(
+                          context: context,
+                          recommendation: recommendation,
+                          sectionCount: reportVersion.sections.length,
+                          itemCount: _contentItemCount(reportVersion),
+                          languageCode: reportVersion.languageCode,
                         ),
-                      ),
-                      if (reportVersion.disclaimer != null) ...[
-                        const SizedBox(height: 8),
-                        _buildDisclaimerCard(
-                            context, reportVersion.disclaimer!),
+                        const SizedBox(height: 18),
+                        Row(
+                          children: [
+                            Container(
+                              width: 4,
+                              height: 18,
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryBlue,
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _t(context, 'clinicalActionPlan'),
+                                style: Theme.of(context).textTheme.titleLarge,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        ...reportVersion.sections.map(
+                          (section) => Padding(
+                            padding: const EdgeInsets.only(bottom: 14),
+                            child: _buildSectionCard(context, section),
+                          ),
+                        ),
+                        if (reportVersion.disclaimer != null) ...[
+                          const SizedBox(height: 8),
+                          _buildDisclaimerCard(
+                              context, reportVersion.disclaimer!),
+                        ],
+                        const SizedBox(height: 12),
                       ],
-                      const SizedBox(height: 12),
-                    ],
+                    ),
                   ),
                 ),
-              ),
-              if (healthProvider.isLoading)
-                const Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: LinearProgressIndicator(minHeight: 2),
-                ),
-            ],
-          );
-        },
+                if (healthProvider.isLoading)
+                  const Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: LinearProgressIndicator(minHeight: 2),
+                  ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
 
-  Widget _buildClinicalHeader(
-    BuildContext context,
-    HealthAnalysis? analysis,
-    HealthRecommendation recommendation,
-  ) {
-    final riskLabel = analysis == null
-        ? 'Unknown Risk'
-        : '${analysis.riskLevel.name.toUpperCase()} RISK';
+  Widget _buildPromptComposer(
+      BuildContext context, HealthProvider healthProvider,
+      {double? minHeight}) {
+    final symptom = _currentSymptom(context);
+    final isAmharic = _isAmharic(context);
+    final selectedSymptoms = _selectedSymptoms(context);
+    final totalSymptoms = selectedSymptoms.length;
+    final hasSymptom = symptom != null;
+    final currentIndex =
+        _followUpIndex.clamp(0, totalSymptoms > 0 ? totalSymptoms - 1 : 0);
+    final currentKey = hasSymptom ? symptom.key : null;
+    final answers = currentKey == null ? null : _answersFor(currentKey);
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(minHeight: minHeight ?? 0),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: AppTheme.white,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: AppTheme.mediumGray.withOpacity(0.8)),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.primaryBlue.withOpacity(0.06),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryBlue.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.psychology_alt_outlined,
+                    color: AppTheme.primaryBlue,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    _t(context, 'tellAi'),
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            _buildSectionLabel(
+              context,
+              icon: Icons.bolt,
+              label: _t(context, 'quickSymptoms'),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              _t(context, 'quickSymptomsHint'),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.lightGray,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppTheme.mediumGray.withOpacity(0.8)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _t(context, 'noQuickSymptoms'),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                  ),
+                  Switch.adaptive(
+                    value: _noQuickSymptoms,
+                    onChanged: (value) {
+                      setState(() {
+                        _noQuickSymptoms = value;
+                        if (value) {
+                          _selectedSymptomKeys.clear();
+                          _opqrstAnswers.clear();
+                          _followUpIndex = 0;
+                          _redFlagAnswer = null;
+                        }
+                      });
+                    },
+                    activeColor: AppTheme.primaryBlue,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            if (!_noQuickSymptoms) ...[
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: _symptomOptions(context).map((option) {
+                  final selected = _selectedSymptomKeys.contains(option.key);
+                  final isHighRisk = option.isHighRisk;
+
+                  return InkWell(
+                    borderRadius: BorderRadius.circular(999),
+                    onTap: () {
+                      setState(() {
+                        _noQuickSymptoms = false;
+                        if (selected) {
+                          _selectedSymptomKeys.remove(option.key);
+                          _opqrstAnswers.remove(option.key);
+                        } else {
+                          _selectedSymptomKeys.add(option.key);
+                          _answersFor(option.key);
+                        }
+
+                        if (_selectedSymptomKeys.isEmpty) {
+                          _redFlagAnswer = null;
+                          _followUpIndex = 0;
+                          return;
+                        }
+
+                        final total = _selectedSymptoms(context).length;
+                        if (_followUpIndex >= total) {
+                          _followUpIndex = total - 1;
+                        }
+
+                        if (!_hasAnyHighRiskSymptom(context)) {
+                          _redFlagAnswer = null;
+                        }
+                      });
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? AppTheme.primaryBlue.withOpacity(0.12)
+                            : AppTheme.white,
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: selected
+                              ? AppTheme.primaryBlue
+                              : (isHighRisk
+                                  ? AppTheme.accentRed.withOpacity(0.45)
+                                  : AppTheme.mediumGray),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: selected
+                                ? AppTheme.primaryBlue.withOpacity(0.08)
+                                : Colors.black.withOpacity(0.03),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            option.icon,
+                            size: 17,
+                            color: selected
+                                ? AppTheme.primaryBlue
+                                : (isHighRisk
+                                    ? AppTheme.accentRed
+                                    : AppTheme.darkGray),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            option.label,
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelLarge
+                                ?.copyWith(
+                                  color: AppTheme.veryDarkGray,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                          if (selected) ...[
+                            const SizedBox(width: 8),
+                            const Icon(
+                              Icons.check_circle,
+                              size: 16,
+                              color: AppTheme.primaryBlue,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+            if (!_noQuickSymptoms && symptom != null) ...[
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppTheme.lightGray,
+                  borderRadius: BorderRadius.circular(16),
+                  border:
+                      Border.all(color: AppTheme.mediumGray.withOpacity(0.7)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionLabel(
+                      context,
+                      icon: Icons.assignment_turned_in_outlined,
+                      label: _t(context, 'followUp'),
+                    ),
+                    if (totalSymptoms > 1) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        '${symptom.label} (${currentIndex + 1}/$totalSymptoms)',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppTheme.darkGray,
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    _buildChoiceField(
+                      context,
+                      title: _t(context, 'onsetTitle'),
+                      icon: Icons.schedule_outlined,
+                      options: _onsetOptions(context),
+                      selectedValue: answers?.onset,
+                      onSelected: (value) {
+                        setState(() {
+                          _opqrstAnswers[currentKey!] =
+                              answers!.copyWith(onset: value);
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    _buildChoiceField(
+                      context,
+                      title: isAmharic
+                          ? 'ጥራት: ${symptom.qualityQuestion}'
+                          : 'Quality: ${symptom.qualityQuestion}',
+                      icon: Icons.health_and_safety_outlined,
+                      options: symptom.qualityOptions,
+                      selectedValue: answers?.quality,
+                      onSelected: (value) {
+                        setState(() {
+                          _opqrstAnswers[currentKey!] =
+                              answers!.copyWith(quality: value);
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: AppTheme.mediumGray.withOpacity(0.8)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.local_hospital_outlined,
+                            color: AppTheme.primaryBlue,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              '${_t(context, 'severityLabel')}: ${answers?.severity?.round() ?? 5}/10',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelLarge
+                                  ?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Slider(
+                      value: answers?.severity ?? 5,
+                      min: 1,
+                      max: 10,
+                      divisions: 9,
+                      label: (answers?.severity ?? 5).round().toString(),
+                      onChanged: (value) {
+                        setState(() {
+                          _opqrstAnswers[currentKey!] =
+                              answers!.copyWith(severity: value);
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 2),
+                    _buildChoiceField(
+                      context,
+                      title: _t(context, 'timingTitle'),
+                      icon: Icons.timelapse_outlined,
+                      options: _timingOptions(context),
+                      selectedValue: answers?.timing,
+                      onSelected: (value) {
+                        setState(() {
+                          _opqrstAnswers[currentKey!] =
+                              answers!.copyWith(timing: value);
+                        });
+                      },
+                    ),
+                    if (totalSymptoms > 1) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: currentIndex > 0
+                                  ? () {
+                                      setState(() {
+                                        _followUpIndex = currentIndex - 1;
+                                      });
+                                    }
+                                  : null,
+                              child: const Text('Previous'),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: currentIndex < totalSymptoms - 1
+                                  ? () {
+                                      setState(() {
+                                        _followUpIndex = currentIndex + 1;
+                                      });
+                                    }
+                                  : null,
+                              child: const Text('Next'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+            if (!_noQuickSymptoms && _hasAnyHighRiskSymptom(context)) ...[
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppTheme.accentRed.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(16),
+                  border:
+                      Border.all(color: AppTheme.accentRed.withOpacity(0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.priority_high_rounded,
+                          color: AppTheme.accentRed,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _t(context, 'redFlag'),
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleSmall
+                                ?.copyWith(
+                                  color: AppTheme.accentRed,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _t(context, 'redFlagQuestion'),
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 10,
+                      children: [
+                        ChoiceChip(
+                          label: Text(_t(context, 'yes')),
+                          selected: _redFlagAnswer == true,
+                          selectedColor: AppTheme.accentRed.withOpacity(0.2),
+                          onSelected: (_) {
+                            setState(() {
+                              _redFlagAnswer = true;
+                            });
+                          },
+                        ),
+                        ChoiceChip(
+                          label: Text(_t(context, 'no')),
+                          selected: _redFlagAnswer == false,
+                          selectedColor: AppTheme.accentGreen.withOpacity(0.2),
+                          onSelected: (_) {
+                            setState(() {
+                              _redFlagAnswer = false;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                    if (_redFlagAnswer == true) ...[
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(_t(context, 'emergencyMessage')),
+                                backgroundColor: AppTheme.accentRed,
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.accentRed,
+                            foregroundColor: AppTheme.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          icon: const Icon(Icons.call),
+                          label: Text(
+                            _t(context, 'callEmergency'),
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.lightGray,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppTheme.mediumGray.withOpacity(0.7)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSectionLabel(
+                    context,
+                    icon: Icons.medical_information_outlined,
+                    label: _t(context, 'background'),
+                  ),
+                  const SizedBox(height: 6),
+                  _buildConditionToggle(
+                    context,
+                    label: _isAmharic(context)
+                        ? 'ሌላ የታሪክ በሽታ የለኝም'
+                        : 'No background conditions',
+                    value: _noBackgroundConditions,
+                    onChanged: (value) {
+                      setState(() {
+                        _noBackgroundConditions = value;
+                        if (value) {
+                          _hasHypertension = false;
+                          _hasDiabetes = false;
+                          _hasHighCholesterol = false;
+                        }
+                      });
+                    },
+                  ),
+                  _buildConditionToggle(
+                    context,
+                    label: _t(context, 'hypertension'),
+                    value: _hasHypertension,
+                    enabled: !_noBackgroundConditions,
+                    onChanged: (value) {
+                      setState(() {
+                        _hasHypertension = value;
+                        if (value) {
+                          _noBackgroundConditions = false;
+                        }
+                      });
+                    },
+                  ),
+                  _buildConditionToggle(
+                    context,
+                    label: _t(context, 'diabetes'),
+                    value: _hasDiabetes,
+                    enabled: !_noBackgroundConditions,
+                    onChanged: (value) {
+                      setState(() {
+                        _hasDiabetes = value;
+                        if (value) {
+                          _noBackgroundConditions = false;
+                        }
+                      });
+                    },
+                  ),
+                  _buildConditionToggle(
+                    context,
+                    label: _t(context, 'cholesterol'),
+                    value: _hasHighCholesterol,
+                    enabled: !_noBackgroundConditions,
+                    onChanged: (value) {
+                      setState(() {
+                        _hasHighCholesterol = value;
+                        if (value) {
+                          _noBackgroundConditions = false;
+                        }
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 4),
+                  _buildChoiceField(
+                    context,
+                    title: _t(context, 'medicationQuestion'),
+                    icon: Icons.medication_outlined,
+                    options: _medicationOptions(context),
+                    selectedValue: _medicationAnswer,
+                    onSelected: (value) {
+                      setState(() {
+                        _medicationAnswer = value;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: healthProvider.isLoading ||
+                        !_isCoreAssessmentComplete(context)
+                    ? null
+                    : _loadRecommendation,
+                icon: healthProvider.isLoading
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.send_rounded),
+                label: Text(
+                  healthProvider.isLoading
+                      ? _t(context, 'submitting')
+                      : _t(context, 'submit'),
+                ),
+              ),
+            ),
+            if (!_isCoreAssessmentComplete(context)) ...[
+              const SizedBox(height: 8),
+              Text(
+                _noQuickSymptoms
+                    ? _t(context, 'completeMedication')
+                    : _t(context, 'completeAll'),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppTheme.darkGray,
+                    ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  double _promptMinHeight(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final available =
+        media.size.height - media.padding.top - kToolbarHeight - 40;
+    return available > 0 ? available : 0;
+  }
+
+  TextTheme _amharicTextTheme(TextTheme base) {
+    return base.copyWith(
+      displayLarge: _amharicStyle(base.displayLarge),
+      displayMedium: _amharicStyle(base.displayMedium),
+      displaySmall: _amharicStyle(base.displaySmall),
+      headlineLarge: _amharicStyle(base.headlineLarge),
+      headlineMedium: _amharicStyle(base.headlineMedium),
+      headlineSmall: _amharicStyle(base.headlineSmall),
+      titleLarge: _amharicStyle(base.titleLarge),
+      titleMedium: _amharicStyle(base.titleMedium),
+      titleSmall: _amharicStyle(base.titleSmall),
+      bodyLarge: _amharicStyle(base.bodyLarge),
+      bodyMedium: _amharicStyle(base.bodyMedium),
+      bodySmall: _amharicStyle(base.bodySmall),
+      labelLarge: _amharicStyle(base.labelLarge),
+      labelMedium: _amharicStyle(base.labelMedium),
+      labelSmall: _amharicStyle(base.labelSmall),
+    );
+  }
+
+  TextStyle? _amharicStyle(TextStyle? style) {
+    if (style == null) return null;
+    return style.copyWith(
+      fontFamily: 'NotoSansEthiopic',
+      fontFamilyFallback: const [
+        'Noto Sans Ethiopic',
+        'NotoSansEthiopic',
+        'Noto Sans',
+        'sans-serif',
+      ],
+      height: 1.5,
+      letterSpacing: 0.1,
+    );
+  }
+
+  Widget _buildSectionLabel(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+  }) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(7),
+          decoration: BoxDecoration(
+            color: AppTheme.primaryBlue.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: AppTheme.primaryBlue, size: 16),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            label,
+            style: Theme.of(context)
+                .textTheme
+                .titleSmall
+                ?.copyWith(fontWeight: FontWeight.w700),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildConditionToggle(
+    BuildContext context, {
+    required String label,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+    bool enabled = true,
+  }) {
+    final labelStyle = Theme.of(context).textTheme.bodyMedium?.copyWith(
+          fontWeight: FontWeight.w600,
+          color: enabled ? null : AppTheme.darkGray,
+        );
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppTheme.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.mediumGray.withOpacity(0.8)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: labelStyle,
+            ),
+          ),
+          Switch.adaptive(
+            value: value,
+            onChanged: enabled ? onChanged : null,
+            activeColor: AppTheme.primaryBlue,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChoiceField(
+    BuildContext context, {
+    required String title,
+    required IconData icon,
+    required List<String> options,
+    required String? selectedValue,
+    required ValueChanged<String> onSelected,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 16, color: AppTheme.primaryBlue),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                title,
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: options.map((option) {
+            final selected = selectedValue == option;
+            return ChoiceChip(
+              label: Text(option),
+              selected: selected,
+              selectedColor: AppTheme.primaryBlue.withOpacity(0.16),
+              onSelected: (_) => onSelected(option),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Map<String, dynamic> _buildStructuredAssessment(BuildContext context) {
+    final primarySymptom = _primarySymptom(context);
+    final conditions = <String>[];
+    if (_hasHypertension) conditions.add('Hypertension');
+    if (_hasDiabetes) conditions.add('Diabetes');
+    if (_hasHighCholesterol) conditions.add('High Cholesterol');
+
+    final symptomList = _selectedSymptoms(context)
+        .map(
+          (item) => {
+            'key': item.key,
+            'label': item.label,
+            'high_risk': item.isHighRisk,
+          },
+        )
+        .toList();
+
+    final opqrstList = _selectedSymptoms(context).map((symptom) {
+      final answers = _opqrstAnswers[symptom.key];
+      return {
+        'key': symptom.key,
+        'label': symptom.label,
+        'quality_question': symptom.qualityQuestion,
+        'onset': answers?.onset,
+        'quality': answers?.quality,
+        'severity': answers?.severity?.round(),
+        'timing': answers?.timing,
+      };
+    }).toList();
+
+    return {
+      'framework': 'OPQRST',
+      'no_quick_symptoms': _noQuickSymptoms,
+      'symptom': primarySymptom == null
+          ? null
+          : {
+              'key': primarySymptom.key,
+              'label': primarySymptom.label,
+              'high_risk': primarySymptom.isHighRisk,
+            },
+      'symptoms': symptomList,
+      'triage': {
+        'red_flag_question': _hasAnyHighRiskSymptom(context)
+            ? 'Numbness, slurred speech, or severe pressure'
+            : null,
+        'red_flag_yes': _hasAnyHighRiskSymptom(context) ? _redFlagAnswer : null,
+      },
+      'opqrst': primarySymptom == null
+          ? null
+          : {
+              'onset': _opqrstAnswers[primarySymptom.key]?.onset,
+              'quality_question': primarySymptom.qualityQuestion,
+              'quality': _opqrstAnswers[primarySymptom.key]?.quality,
+              'severity': _opqrstAnswers[primarySymptom.key]?.severity?.round(),
+              'timing': _opqrstAnswers[primarySymptom.key]?.timing,
+            },
+      'opqrst_by_symptom': opqrstList,
+      'background': {
+        'known_conditions': conditions,
+        'medication_taken_today': _medicationAnswer,
+      },
+      'submitted_at': DateTime.now().toIso8601String(),
+    };
+  }
+
+  String _buildSymptomSummary(BuildContext context) {
+    final symptoms = _selectedSymptoms(context);
+    if (symptoms.isEmpty) {
+      return _t(context, 'noQuickSymptomsReported');
+    }
+
+    return symptoms.map((symptom) {
+      final answers = _opqrstAnswers[symptom.key];
+      final details = <String>[];
+      if (answers?.onset != null) details.add('onset ${answers!.onset}');
+      if (answers?.quality != null) details.add('quality ${answers!.quality}');
+      if (answers?.severity != null) {
+        details.add('severity ${answers!.severity!.round()}/10');
+      }
+      if (answers?.timing != null) details.add('timing ${answers!.timing}');
+
+      if (details.isEmpty) {
+        return symptom.label;
+      }
+
+      return '${symptom.label} (${details.join(', ')})';
+    }).join('; ');
+  }
+
+  String _normalizeRecommendationText(String text) {
+    return text.replaceAll('ቪታሚኖች', 'የቫይታል');
+  }
+
+  String? _buildVitalsSummary(HealthProvider healthProvider) {
+    final vitals = healthProvider.currentVitals;
+    if (vitals == null) return null;
+
+    final spo2 = vitals.spo2.toStringAsFixed(1);
+    final temp = vitals.temperature.toStringAsFixed(1);
+    return 'Vitals: HR ${vitals.heartRate} bpm, SpO2 $spo2%, Temp $temp C, BP ${vitals.systolicBP}/${vitals.diastolicBP}.';
+  }
+
+  Widget _buildClinicalHeader(BuildContext context, HealthAnalysis? analysis,
+      HealthRecommendation recommendation,
+      {required VoidCallback onRefreshPressed, required bool isRefreshing}) {
     final riskColor = _riskColor(analysis?.riskLevel);
 
     return Container(
@@ -316,7 +1490,7 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Text(
-                'AI Clinical Brief',
+                _t(context, 'aiBrief'),
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       color: AppTheme.white,
                       fontWeight: FontWeight.w700,
@@ -330,22 +1504,43 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                   borderRadius: BorderRadius.circular(999),
                   border: Border.all(color: riskColor.withOpacity(0.35)),
                 ),
-                child: Text(
-                  riskLabel,
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: AppTheme.white,
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
+                // child: Text(
+                //   riskLabel,
+                //   style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                //         color: AppTheme.white,
+                //         fontWeight: FontWeight.w700,
+                //       ),
+                // ),
               ),
             ],
           ),
           const SizedBox(height: 10),
           Text(
-            'Structured and safety-first recommendation based on your latest analysis.',
+            _t(context, 'briefSubtitle'),
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: AppTheme.white.withOpacity(0.9),
                 ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: isRefreshing ? null : onRefreshPressed,
+              icon: isRefreshing
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.refresh),
+              label: Text(isRefreshing
+                  ? _t(context, 'generatingRecommendation')
+                  : _t(context, 'newRecommendation')),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.white,
+                side: BorderSide(color: AppTheme.white.withOpacity(0.75)),
+              ),
+            ),
           ),
           const SizedBox(height: 16),
           LayoutBuilder(
@@ -364,7 +1559,7 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
-                        'Updated ${_formatDate(recommendation.updatedAt)}',
+                        '${_t(context, 'updatedLabel')} ${_formatDate(recommendation.updatedAt)}',
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
                               color: AppTheme.white,
                               fontWeight: FontWeight.w500,
@@ -395,7 +1590,7 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
-                      'Updated ${_formatDate(recommendation.updatedAt)}',
+                      '${_t(context, 'updatedLabel')} ${_formatDate(recommendation.updatedAt)}',
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
                             color: AppTheme.white,
                             fontWeight: FontWeight.w500,
@@ -440,9 +1635,12 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
         spacing: 10,
         children: versions.map((version) {
           final isSelected = version.languageCode == selectedCode;
+          final label = version.languageCode.toLowerCase().startsWith('am')
+              ? _t(context, 'amharicLabel')
+              : _t(context, 'englishLabel');
           return ChoiceChip(
             selected: isSelected,
-            label: Text(version.languageLabel),
+            label: Text(label),
             selectedColor: AppTheme.primaryBlue.withOpacity(0.15),
             checkmarkColor: AppTheme.primaryBlue,
             onSelected: (_) {
@@ -577,8 +1775,9 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
     required int itemCount,
     required String languageCode,
   }) {
-    final languageLabel =
-        languageCode.toLowerCase().startsWith('am') ? 'Amharic' : 'English';
+    final languageLabel = languageCode.toLowerCase().startsWith('am')
+        ? _t(context, 'amharicLabel')
+        : _t(context, 'englishLabel');
 
     return Container(
       width: double.infinity,
@@ -599,10 +1798,10 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
         spacing: 10,
         runSpacing: 10,
         children: [
-          _summaryPill(
-              context, Icons.article_outlined, '$sectionCount Sections'),
-          _summaryPill(
-              context, Icons.checklist_rounded, '$itemCount Action Items'),
+          _summaryPill(context, Icons.article_outlined,
+              '$sectionCount ${_t(context, 'sections')}'),
+          _summaryPill(context, Icons.checklist_rounded,
+              '$itemCount ${_t(context, 'actionItems')}'),
           _summaryPill(
             context,
             Icons.language,
@@ -611,7 +1810,7 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
           _summaryPill(
             context,
             Icons.schedule,
-            'Updated ${_formatDate(recommendation.updatedAt)}',
+            '${_t(context, 'updatedLabel')} ${_formatDate(recommendation.updatedAt)}',
           ),
         ],
       ),
@@ -694,6 +1893,12 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
     if (lower.contains('assessment') || lower.contains('ግምገማ')) {
       return AppTheme.primaryBlue;
     }
+    if (lower.contains('risk') || lower.contains('stratification')) {
+      return AppTheme.accentOrange;
+    }
+    if (lower.contains('recommendation')) {
+      return AppTheme.accentGreen;
+    }
     if (lower.contains('focus') || lower.contains('ትኩረት')) {
       return AppTheme.accentOrange;
     }
@@ -707,6 +1912,12 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
     final lower = title.toLowerCase();
     if (lower.contains('assessment') || lower.contains('ግምገማ')) {
       return Icons.medical_information_outlined;
+    }
+    if (lower.contains('risk') || lower.contains('stratification')) {
+      return Icons.warning_amber_rounded;
+    }
+    if (lower.contains('recommendation')) {
+      return Icons.task_alt;
     }
     if (lower.contains('focus') || lower.contains('ትኩረት')) {
       return Icons.track_changes;
@@ -733,6 +1944,52 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
       count += section.numberedItems.length;
     }
     return count;
+  }
+}
+
+class _SymptomOption {
+  final String key;
+  final String label;
+  final IconData icon;
+  final bool isHighRisk;
+  final String qualityQuestion;
+  final List<String> qualityOptions;
+
+  const _SymptomOption({
+    required this.key,
+    required this.label,
+    required this.icon,
+    this.isHighRisk = false,
+    required this.qualityQuestion,
+    required this.qualityOptions,
+  });
+}
+
+class _OpqrstAnswers {
+  final String? onset;
+  final String? quality;
+  final double? severity;
+  final String? timing;
+
+  const _OpqrstAnswers({
+    this.onset,
+    this.quality,
+    this.severity = 5,
+    this.timing,
+  });
+
+  _OpqrstAnswers copyWith({
+    String? onset,
+    String? quality,
+    double? severity,
+    String? timing,
+  }) {
+    return _OpqrstAnswers(
+      onset: onset ?? this.onset,
+      quality: quality ?? this.quality,
+      severity: severity ?? this.severity,
+      timing: timing ?? this.timing,
+    );
   }
 }
 
@@ -841,9 +2098,29 @@ class _ReportVersion {
     final buffer = <String>[];
     String? disclaimer;
 
+    bool isDisclaimerTitle(String title) {
+      final lower = title.toLowerCase();
+      return lower.contains('disclaimer') || lower.contains('ማሳሰቢያ');
+    }
+
     void flushSection() {
       if (currentTitle == null) return;
-      sections.add(_ReportSection.parse(currentTitle, buffer));
+
+      final cleanedTitle = _cleanText(currentTitle);
+      final joined = buffer
+          .map((line) => _cleanText(line))
+          .where((line) => line.isNotEmpty)
+          .join(' ')
+          .trim();
+
+      if (isDisclaimerTitle(cleanedTitle)) {
+        if (joined.isNotEmpty) {
+          disclaimer = joined;
+        }
+      } else {
+        sections.add(_ReportSection.parse(cleanedTitle, buffer));
+      }
+
       buffer.clear();
     }
 
@@ -851,9 +2128,28 @@ class _ReportVersion {
       final trimmed = line.trim();
       if (trimmed.isEmpty) continue;
 
+      final bracketHeader = RegExp(r'^\[(.+)\]$').firstMatch(trimmed);
+      if (bracketHeader != null) {
+        flushSection();
+        currentTitle = _cleanText(bracketHeader.group(1) ?? '');
+        continue;
+      }
+
       if (trimmed.startsWith('###')) {
         flushSection();
         currentTitle = _cleanText(trimmed.replaceFirst('###', ''));
+        continue;
+      }
+
+      if (trimmed.startsWith('##')) {
+        flushSection();
+        currentTitle = _cleanText(trimmed.replaceFirst('##', ''));
+        continue;
+      }
+
+      if (trimmed.startsWith('#')) {
+        flushSection();
+        currentTitle = _cleanText(trimmed.replaceFirst('#', ''));
         continue;
       }
 
@@ -906,17 +2202,32 @@ class _ReportSection {
       final line = rawLine.trim();
       if (line.isEmpty) continue;
 
-      if (line.startsWith('*')) {
-        bullets.add(_stripPrefix(line.replaceFirst(RegExp(r'^\*+\s*'), '')));
+      if (line.startsWith('*') ||
+          line.startsWith('-') ||
+          line.startsWith('•')) {
+        final value = _stripPrefix(
+          line.replaceFirst(RegExp(r'^[*\-•]+\s*'), ''),
+        );
+        if (value.isNotEmpty) {
+          bullets.add(value);
+        }
         continue;
       }
 
       if (RegExp(r'^\d+\.\s+').hasMatch(line)) {
-        numbered.add(_stripPrefix(line.replaceFirst(RegExp(r'^\d+\.\s+'), '')));
+        final value = _stripPrefix(
+          line.replaceFirst(RegExp(r'^\d+\.\s+'), ''),
+        );
+        if (value.isNotEmpty) {
+          numbered.add(value);
+        }
         continue;
       }
 
-      paragraphs.add(_stripPrefix(line));
+      final value = _stripPrefix(line);
+      if (value.isNotEmpty) {
+        paragraphs.add(value);
+      }
     }
 
     return _ReportSection(
