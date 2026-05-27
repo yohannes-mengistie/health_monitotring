@@ -25,7 +25,6 @@ RUN apk add --no-cache \
         zip \
         intl \
         pcntl \
-        sockets \
         exif \
     && apk del autoconf g++ make \
     && rm -rf /var/cache/apk/*
