@@ -1,0 +1,78 @@
+databases:
+  - name: health-monitoring-db
+    plan: basic-256mb
+    databaseName: health_monitoring
+    user: health_monitoring
+    postgresMajorVersion: "16"
+
+services:
+  - type: web
+    name: health-monitoring-api
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerCommand: start-web
+    healthCheckPath: /up
+    autoDeploy: true
+    envVars:
+      - key: APP_NAME
+        value: HealthMonitoring
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_KEY
+        sync: false
+      - key: APP_URL
+        sync: false
+      - key: LOG_CHANNEL
+        value: stack
+      - key: LOG_STACK
+        value: single
+      - key: LOG_LEVEL
+        value: info
+
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        fromDatabase:
+          name: health-monitoring-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: health-monitoring-db
+          property: port
+      - key: DB_DATABASE
+        fromDatabase:
+          name: health-monitoring-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: health-monitoring-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: health-monitoring-db
+          property: password
+
+      - key: SESSION_DRIVER
+        value: database
+      - key: CACHE_STORE
+        value: database
+      - key: QUEUE_CONNECTION
+        value: sync
+      - key: BROADCAST_CONNECTION
+        value: log
+      - key: FILESYSTEM_DISK
+        value: local
+
+      - key: OLLAMA_URL
+        sync: false
+      - key: OLLAMA_MODEL
+        sync: false
+      - key: OLLAMA_API_KEY
+        sync: false
+      - key: OLLAMA_KEEP_ALIVE
+        value: 10m
+      - key: OLLAMA_CONNECTION_TIMEOUT
+        value: "300"
