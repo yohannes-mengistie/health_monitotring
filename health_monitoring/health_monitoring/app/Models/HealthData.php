@@ -2,10 +2,29 @@
 
 namespace App\Models;
 
+use App\Services\VitalsTrendService;
+use App\Services\MetricsOverviewService;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\Model;
 
 class HealthData extends Model
 {
+    protected static function booted(): void
+    {
+        static::created(function (HealthData $data) {
+            app(VitalsTrendService::class)->invalidate($data->user_id);
+
+            try {
+                app(MetricsOverviewService::class)->refreshForUser($data->user_id);
+            } catch (\Throwable $e) {
+                Log::warning('Metrics overview refresh failed', [
+                    'user_id' => $data->user_id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        });
+    }
+
     protected $fillable = [
         'user_id',
         'device_id',

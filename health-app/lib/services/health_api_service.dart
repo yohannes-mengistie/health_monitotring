@@ -182,6 +182,10 @@ class HealthApiService {
             );
 
       if (shouldSendContext) {
+        if (kDebugMode) {
+          debugPrint('[AI-V2] Request URL: $effectiveUri');
+          debugPrint('[AI-V2] Method: POST');
+        }
         final payload = <String, dynamic>{
           'bpm': latestVitals['bpm'],
           'spo2': latestVitals['spo2'],
@@ -209,6 +213,10 @@ class HealthApiService {
           body: jsonEncode(payload),
         );
       } else {
+        if (kDebugMode) {
+          debugPrint('[AI-V2] Request URL: $effectiveUri');
+          debugPrint('[AI-V2] Method: GET');
+        }
         response = await _client.get(
           effectiveUri,
           headers: {
@@ -216,6 +224,14 @@ class HealthApiService {
             'Authorization': 'Bearer $token',
           },
         );
+      }
+
+      if (kDebugMode) {
+        debugPrint('[AI-V2] Status: ${response.statusCode}');
+        final preview = response.body.length > 500
+            ? '${response.body.substring(0, 500)}...'
+            : response.body;
+        debugPrint('[AI-V2] Body preview: $preview');
       }
 
       final body = _decodeBody(response.body);

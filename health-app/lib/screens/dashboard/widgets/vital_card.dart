@@ -22,7 +22,7 @@ class VitalCard extends StatelessWidget {
     switch (status) {
       case VitalStatus.normal:
         return AppTheme.accentGreen;
-      case VitalStatus.elevated:
+      case VitalStatus.warning:
         return AppTheme.accentOrange;
       case VitalStatus.critical:
         return AppTheme.accentRed;
@@ -35,7 +35,7 @@ class VitalCard extends StatelessWidget {
     switch (status) {
       case VitalStatus.normal:
         return AppTheme.accentGreen.withOpacity(0.1);
-      case VitalStatus.elevated:
+      case VitalStatus.warning:
         return AppTheme.accentOrange.withOpacity(0.1);
       case VitalStatus.critical:
         return AppTheme.accentRed.withOpacity(0.1);
@@ -48,8 +48,8 @@ class VitalCard extends StatelessWidget {
     switch (status) {
       case VitalStatus.normal:
         return 'Normal';
-      case VitalStatus.elevated:
-        return 'Elevated';
+      case VitalStatus.warning:
+        return 'warning';
       case VitalStatus.critical:
         return 'Critical';
       case VitalStatus.unknown:

@@ -65,20 +65,20 @@ class _SignInScreenState extends State<SignInScreen> {
                       color: AppTheme.darkGray,
                     ),
               ),
-              const SizedBox(height: 32),
-              // Social login buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () {},
-                      icon: const Icon(Icons.login),
-                      label: const Text('Google'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                    ),
-                  ),
+              // const SizedBox(height: 32),
+              // // Social login buttons
+              // Row(
+              //   children: [
+              //     Expanded(
+              //       child: OutlinedButton.icon(
+              //         onPressed: () {},
+              //         icon: const Icon(Icons.login),
+              //         label: const Text('Google'),
+              //         style: OutlinedButton.styleFrom(
+              //           padding: const EdgeInsets.symmetric(vertical: 12),
+              //         ),
+              //       ),
+              //     ),
                   // const SizedBox(width: 12),
                   // Expanded(
                   //   child: OutlinedButton.icon(
@@ -90,23 +90,23 @@ class _SignInScreenState extends State<SignInScreen> {
                   //     ),
                   //   ),
                   // ),
-                ],
-              ),
+              //   ],
+              // ),
               const SizedBox(height: 24),
               // Divider with text
               Row(
                 children: [
-                  Expanded(
-                      child: Container(height: 1, color: AppTheme.mediumGray)),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      'OR SIGN IN WITH EMAIL',
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            color: AppTheme.darkGray,
-                          ),
-                    ),
-                  ),
+                  // Expanded(
+                      // child: Container(height: 1, color: AppTheme.mediumGray)),
+                  // Padding(
+                  //   padding: const EdgeInsets.symmetric(horizontal: 16),
+                  //   child: Text(
+                  //     'OR SIGN IN WITH EMAIL',
+                  //     style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  //           color: AppTheme.darkGray,
+                  //         ),
+                  //   ),
+                  // ),
                   Expanded(
                       child: Container(height: 1, color: AppTheme.mediumGray)),
                 ],

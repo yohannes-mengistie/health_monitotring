@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-enum VitalStatus { normal, elevated, critical, unknown }
+enum VitalStatus { normal, warning, critical, unknown }
 
 class VitalReading extends Equatable {
   final String id;
@@ -26,14 +26,14 @@ class VitalReading extends Equatable {
   });
 
   VitalStatus getHeartRateStatus() {
-    if (heartRate < 60 || heartRate > 100) return VitalStatus.elevated;
+    if (heartRate < 60 || heartRate > 100) return VitalStatus.warning;
     if (heartRate < 40 || heartRate > 120) return VitalStatus.critical;
     return VitalStatus.normal;
   }
 
   VitalStatus getSpo2Status() {
     if (spo2 < 95) return VitalStatus.critical;
-    if (spo2 < 98) return VitalStatus.elevated;
+    if (spo2 < 98) return VitalStatus.warning;
     return VitalStatus.normal;
   }
 
@@ -42,14 +42,14 @@ class VitalReading extends Equatable {
       return VitalStatus.critical;
     }
     if (systolicBP >= 130 || diastolicBP >= 80) {
-      return VitalStatus.elevated;
+      return VitalStatus.warning;
     }
     return VitalStatus.normal;
   }
 
   VitalStatus getTemperatureStatus() {
     if (temperature < 36.1 || temperature > 37.2) {
-      return VitalStatus.elevated;
+      return VitalStatus.warning;
     }
     if (temperature < 35 || temperature > 38.5) {
       return VitalStatus.critical;
@@ -68,8 +68,8 @@ class VitalReading extends Equatable {
     if (statuses.contains(VitalStatus.critical)) {
       return VitalStatus.critical;
     }
-    if (statuses.contains(VitalStatus.elevated)) {
-      return VitalStatus.elevated;
+    if (statuses.contains(VitalStatus.warning)) {
+      return VitalStatus.warning;
     }
     return VitalStatus.normal;
   }

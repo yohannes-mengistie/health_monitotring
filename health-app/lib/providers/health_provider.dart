@@ -4,11 +4,13 @@ import 'package:flutter/foundation.dart';
 import 'package:health_monitor_ai/models/vitals_model.dart';
 import 'package:health_monitor_ai/models/analysis_model.dart';
 import 'package:health_monitor_ai/models/recommendation_model.dart';
+import 'package:health_monitor_ai/models/measurement_session.dart';
 import 'package:health_monitor_ai/services/health_api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class HealthProvider extends ChangeNotifier {
   static const String _liveCachePrefix = 'live_cache_v1';
+  static const String _metricsCachePrefix = 'metrics_overview_cache_v1';
   final HealthApiService _healthApiService;
 
   HealthProvider({HealthApiService? healthApiService})
@@ -31,6 +33,11 @@ class HealthProvider extends ChangeNotifier {
   String _livePhase = 'measuring';
   int _livePhaseRemainingSeconds = 0;
   String _liveInstruction = 'Measuring... keep your hand steady.';
+  MeasurementState _measurementState = MeasurementState.waitingForFinger;
+  int _measurementProgress = 0;
+  String? _measurementError;
+  String? _sessionId;
+  String? _deviceId;
   bool _isUsingCachedData = false;
   DateTime? _cachedAt;
   bool _isLoading = false;
@@ -56,6 +63,11 @@ class HealthProvider extends ChangeNotifier {
   String get livePhase => _livePhase;
   int get livePhaseRemainingSeconds => _livePhaseRemainingSeconds;
   String get liveInstruction => _liveInstruction;
+  MeasurementState get measurementState => _measurementState;
+  int get measurementProgress => _measurementProgress;
+  String? get measurementError => _measurementError;
+  String? get sessionId => _sessionId;
+  String? get deviceId => _deviceId;
   bool get isUsingCachedData => _isUsingCachedData;
   DateTime? get cachedAt => _cachedAt;
   bool get isLoading => _isLoading;
@@ -131,7 +143,7 @@ class HealthProvider extends ChangeNotifier {
         completedGoals: completedCount,
         tasks: updatedTasks,
         expectedImpact: _currentRecommendation!.expectedImpact,
-        medicalDisclaimer: _currentRecommendation!.medicalDisclaimer,
+        medicalDisclaimer: '',
         createdAt: _currentRecommendation!.createdAt,
         updatedAt: DateTime.now(),
       );
@@ -191,6 +203,7 @@ class HealthProvider extends ChangeNotifier {
   Future<void> loadMetricsOverview({
     required String period,
     String? token,
+    String? userId,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -199,9 +212,12 @@ class HealthProvider extends ChangeNotifier {
 
     try {
       if (token == null || token.isEmpty) {
-        _clearMetrics();
-        _errorMessage =
-            'Authentication token is missing. Please sign in again.';
+        final restored = await _restoreMetricsCache(userId, period);
+        if (!restored) {
+          _clearMetrics();
+          _errorMessage =
+              'Authentication token is missing. Please sign in again.';
+        }
       } else {
         final response = await _healthApiService.fetchMetricsOverview(
           token: token,
@@ -210,15 +226,22 @@ class HealthProvider extends ChangeNotifier {
 
         if (_isValidMetricsResponse(response)) {
           _setMetricsFromBackend(response);
+          await _saveMetricsCache(userId, period, _metricsOverviewData);
         } else {
-          _clearMetrics();
-          _errorMessage = _extractBackendMessage(response) ??
-              'Metrics endpoint returned no usable data. If database has rows, verify you are signed in with the same account that produced those readings.';
+          final restored = await _restoreMetricsCache(userId, period);
+          if (!restored) {
+            _clearMetrics();
+            _errorMessage = _extractBackendMessage(response) ??
+                'Metrics endpoint returned no usable data. If database has rows, verify you are signed in with the same account that produced those readings.';
+          }
         }
       }
     } catch (e) {
-      _clearMetrics();
-      _errorMessage = e.toString();
+      final restored = await _restoreMetricsCache(userId, period);
+      if (!restored) {
+        _clearMetrics();
+        _errorMessage = e.toString();
+      }
     }
 
     _isLoading = false;
@@ -231,7 +254,8 @@ class HealthProvider extends ChangeNotifier {
   }) async {
     try {
       if (token == null || token.isEmpty) {
-        _errorMessage = 'Authentication token is missing. Please sign in again.';
+        _errorMessage =
+            'Authentication token is missing. Please sign in again.';
         notifyListeners();
         return [];
       }
@@ -373,27 +397,62 @@ class HealthProvider extends ChangeNotifier {
             completedGoals: 0,
             tasks: const [],
             expectedImpact: const [],
-            medicalDisclaimer:
-                'This is an AI-generated educational summary. Please consult a qualified doctor for proper medical advice.',
+            medicalDisclaimer: '',
             createdAt: now,
             updatedAt: now,
           );
 
-          final rawRisk =
-              (response['predicted_risk']?.toString() ?? '').toLowerCase();
-          if (rawRisk.isNotEmpty && _currentAnalysis != null) {
+          final predictedRisk = _extractPredictedRisk(response);
+          final probabilities = _extractProbabilities(response);
+          final rawRisk = (predictedRisk ?? '').toLowerCase();
+          final updatedSummary = report.trim().isEmpty
+              ? (_currentAnalysis?.summary ?? 'Clinical report unavailable.')
+              : report.trim();
+          final updatedKeyFinding = predictedRisk == null
+              ? (_currentAnalysis?.keyFinding ?? '')
+              : 'Predicted risk: $predictedRisk';
+          final updatedRiskScore = probabilities.isNotEmpty
+              ? _deriveRiskScore(probabilities, rawRisk)
+              : (_currentAnalysis?.riskScore ?? 0);
+
+          if (_currentAnalysis == null) {
+            _currentAnalysis = HealthAnalysis(
+              id: 'backend_analysis',
+              userId: userId,
+              riskLevel: _mapRiskLevel(rawRisk),
+              riskScore: updatedRiskScore,
+              riskCategory: 'Clinical Risk',
+              summary: updatedSummary,
+              keyFinding: updatedKeyFinding,
+              contributingFactors: const [],
+              recentAlerts: const [],
+              analysisData: {
+                'predicted_risk': predictedRisk,
+                'probabilities': probabilities,
+                'report': report,
+              },
+              timestamp: DateTime.now(),
+            );
+          } else {
             _currentAnalysis = HealthAnalysis(
               id: _currentAnalysis!.id,
               userId: _currentAnalysis!.userId,
-              riskLevel: _mapRiskLevel(rawRisk),
-              riskScore: _currentAnalysis!.riskScore,
+              riskLevel: rawRisk.isEmpty
+                  ? _currentAnalysis!.riskLevel
+                  : _mapRiskLevel(rawRisk),
+              riskScore: updatedRiskScore,
               riskCategory: _currentAnalysis!.riskCategory,
-              summary: _currentAnalysis!.summary,
-              keyFinding: _currentAnalysis!.keyFinding,
+              summary: updatedSummary,
+              keyFinding: updatedKeyFinding,
               contributingFactors: _currentAnalysis!.contributingFactors,
               recentAlerts: _currentAnalysis!.recentAlerts,
-              analysisData: _currentAnalysis!.analysisData,
-              timestamp: _currentAnalysis!.timestamp,
+              analysisData: {
+                ..._currentAnalysis!.analysisData,
+                'predicted_risk': predictedRisk,
+                'probabilities': probabilities,
+                'report': report,
+              },
+              timestamp: DateTime.now(),
             );
           }
 
@@ -491,17 +550,26 @@ class HealthProvider extends ChangeNotifier {
   }
 
   bool _hasDashboardData(Map<String, dynamic> data) {
-    return data['latest_vitals'] is Map<String, dynamic> &&
-        data['risk'] is Map<String, dynamic>;
+    return data['latest_vitals'] is Map<String, dynamic>;
   }
 
   void _setDashboardFromBackend(String userId, Map<String, dynamic> data) {
     final latestVitals = data['latest_vitals'] as Map<String, dynamic>;
-    final risk = data['risk'] as Map<String, dynamic>;
-
-    final riskLabel =
-        (risk['predicted_risk']?.toString() ?? 'low').toLowerCase();
-    final probabilities = _asStringDoubleMap(risk['probabilities']);
+    final riskRaw = data['risk'];
+    final risk = riskRaw is Map<String, dynamic> ? riskRaw : null;
+    final analysisRaw = data['analysis'];
+    final analysis = analysisRaw is Map<String, dynamic> ? analysisRaw : null;
+    final riskLabelRaw = (risk?['model_predicted_risk']?.toString() ??
+            risk?['predicted_risk']?.toString() ??
+            analysis?['model_predicted_risk']?.toString() ??
+            analysis?['predicted_risk']?.toString() ??
+            'low')
+        .toLowerCase();
+    final probabilities = _asStringDoubleMap(
+      risk?['probabilities'] ?? analysis?['probabilities'],
+    );
+    final probabilityLabel = _bestProbabilityLabel(probabilities);
+    final riskLabel = (probabilityLabel ?? riskLabelRaw).toLowerCase();
     final riskLevel = _mapRiskLevel(riskLabel);
     final riskScore = _deriveRiskScore(probabilities, riskLabel);
 
@@ -517,24 +585,28 @@ class HealthProvider extends ChangeNotifier {
       deviceName: 'Backend Stream',
     );
 
-    _currentAnalysis = HealthAnalysis(
-      id: 'backend_analysis',
-      userId: userId,
-      riskLevel: riskLevel,
-      riskScore: riskScore,
-      riskCategory: 'Clinical Risk',
-      summary:
-          'Risk is inferred from latest ML prediction and probability distribution.',
-      keyFinding: 'Predicted risk: ${risk['predicted_risk']}',
-      contributingFactors: const [],
-      recentAlerts: const [],
-      analysisData: {
-        'predicted_risk': risk['predicted_risk'],
-        'probabilities': probabilities,
-        'alert': risk['alert'] == true,
-      },
-      timestamp: DateTime.now(),
-    );
+    if (risk != null) {
+      _currentAnalysis = HealthAnalysis(
+        id: 'backend_analysis',
+        userId: userId,
+        riskLevel: riskLevel,
+        riskScore: riskScore,
+        riskCategory: 'Clinical Risk',
+        summary:
+            'Risk is inferred from latest ML prediction and probability distribution.',
+        keyFinding: 'Predicted risk: ${risk['predicted_risk']}',
+        contributingFactors: const [],
+        recentAlerts: const [],
+        analysisData: {
+          'predicted_risk': risk['predicted_risk'],
+          'probabilities': probabilities,
+          'alert': risk['alert'] == true,
+        },
+        timestamp: DateTime.now(),
+      );
+    } else {
+      _currentAnalysis = null;
+    }
 
     _avgHeartRate = _toDouble(latestVitals['heart_rate']);
     _avgSpo2 = _toDouble(latestVitals['spo2']);
@@ -542,8 +614,21 @@ class HealthProvider extends ChangeNotifier {
     _diastolicBp = _toDouble(latestVitals['diastolic_bp']).round();
     _temperature = _toDouble(latestVitals['temperature']);
 
-    final rawPhase = data['phase']?.toString().toLowerCase();
-    _livePhase = rawPhase == 'cooldown' ? 'cooldown' : 'measuring';
+    _applySessionState(data);
+
+    _metricsUsingBackend = true;
+    _isUsingCachedData = false;
+    _cachedAt = null;
+    _errorMessage = null;
+  }
+
+  void _applySessionState(Map<String, dynamic> data) {
+    final rawState = data['phase'] ?? data['state'];
+    _measurementState = parseMeasurementState(rawState?.toString());
+    _measurementProgress = _toDouble(data['progress']).round();
+    _measurementError = data['error_code']?.toString();
+    _sessionId = data['session_id']?.toString();
+    _deviceId = data['device_id']?.toString();
 
     final rawRemaining = _toDouble(data['remaining_seconds']).round();
     _livePhaseRemainingSeconds = rawRemaining < 0 ? 0 : rawRemaining;
@@ -552,19 +637,80 @@ class HealthProvider extends ChangeNotifier {
     if (rawInstruction != null && rawInstruction.isNotEmpty) {
       _liveInstruction = rawInstruction;
     } else {
-      _liveInstruction = _livePhase == 'cooldown'
+      _liveInstruction = _measurementState == MeasurementState.removeFinger
           ? 'Remove your hand. Wait 3 seconds, then place it again.'
           : 'Measuring... keep your hand steady.';
     }
 
-    _metricsUsingBackend = true;
-    _isUsingCachedData = false;
-    _cachedAt = null;
-    _errorMessage = null;
+    if (_measurementState == MeasurementState.removeFinger) {
+      _livePhase = 'cooldown';
+    } else {
+      _livePhase = 'measuring';
+    }
   }
 
   String _liveCacheKey(String userId) {
     return '${_liveCachePrefix}_$userId';
+  }
+
+  String _metricsCacheKey(String userId, String period) {
+    return '${_metricsCachePrefix}_${userId}_$period';
+  }
+
+  Future<void> _saveMetricsCache(
+    String? userId,
+    String period,
+    Map<String, dynamic>? payload,
+  ) async {
+    if (userId == null || userId.isEmpty || payload == null) {
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final data = <String, dynamic>{
+      'user_id': userId,
+      'period': period,
+      'saved_at': DateTime.now().toIso8601String(),
+      'data': payload,
+    };
+
+    await prefs.setString(_metricsCacheKey(userId, period), jsonEncode(data));
+  }
+
+  Future<bool> _restoreMetricsCache(String? userId, String period) async {
+    if (userId == null || userId.isEmpty) {
+      return false;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_metricsCacheKey(userId, period));
+    if (raw == null || raw.isEmpty) {
+      return false;
+    }
+
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map<String, dynamic>) {
+        return false;
+      }
+
+      final cachedUser = decoded['user_id']?.toString();
+      if (cachedUser != null && cachedUser != userId) {
+        return false;
+      }
+
+      final data = decoded['data'];
+      if (data is! Map<String, dynamic>) {
+        return false;
+      }
+
+      _metricsOverviewData = Map<String, dynamic>.from(data);
+      _metricsUsingBackend = false;
+      _errorMessage = 'Backend unavailable. Showing cached metrics.';
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> _saveLiveCache(String userId) async {
@@ -599,6 +745,11 @@ class HealthProvider extends ChangeNotifier {
         'phase': _livePhase,
         'remaining_seconds': _livePhaseRemainingSeconds,
         'instruction': _liveInstruction,
+        'state': _measurementState.name,
+        'progress': _measurementProgress,
+        'error_code': _measurementError,
+        'session_id': _sessionId,
+        'device_id': _deviceId,
       },
       'metrics': {
         'avg_heart_rate': _avgHeartRate,
@@ -677,14 +828,7 @@ class HealthProvider extends ChangeNotifier {
 
       final live = decoded['live'];
       if (live is Map<String, dynamic>) {
-        final rawPhase = live['phase']?.toString().toLowerCase();
-        _livePhase = rawPhase == 'cooldown' ? 'cooldown' : 'measuring';
-        _livePhaseRemainingSeconds =
-            _toDouble(live['remaining_seconds']).round();
-        final instruction = live['instruction']?.toString().trim();
-        if (instruction != null && instruction.isNotEmpty) {
-          _liveInstruction = instruction;
-        }
+        _applySessionState(live);
       }
 
       final metrics = decoded['metrics'];
@@ -714,6 +858,11 @@ class HealthProvider extends ChangeNotifier {
     _livePhase = 'measuring';
     _livePhaseRemainingSeconds = 0;
     _liveInstruction = 'Measuring... keep your hand steady.';
+    _measurementState = MeasurementState.waitingForFinger;
+    _measurementProgress = 0;
+    _measurementError = null;
+    _sessionId = null;
+    _deviceId = null;
     _metricsUsingBackend = false;
     _isUsingCachedData = false;
     _cachedAt = null;
@@ -750,6 +899,23 @@ class HealthProvider extends ChangeNotifier {
       return RiskLevel.moderate;
     }
     return RiskLevel.low;
+  }
+
+  String? _bestProbabilityLabel(Map<String, double> probabilities) {
+    if (probabilities.isEmpty) {
+      return null;
+    }
+
+    String? bestLabel;
+    double bestValue = -1;
+    probabilities.forEach((key, value) {
+      if (value > bestValue) {
+        bestValue = value;
+        bestLabel = key;
+      }
+    });
+
+    return bestLabel;
   }
 
   double _deriveRiskScore(Map<String, double> probabilities, String riskLabel) {
@@ -797,6 +963,89 @@ class HealthProvider extends ChangeNotifier {
     }
 
     return null;
+  }
+
+  String? _extractPredictedRisk(Map<String, dynamic> payload) {
+    final direct = payload['predicted_risk']?.toString().trim();
+    final modelDirect = payload['model_predicted_risk']?.toString().trim();
+    if (modelDirect != null && modelDirect.isNotEmpty) {
+      return modelDirect;
+    }
+
+    if (direct != null && direct.isNotEmpty) {
+      return direct;
+    }
+
+    final data = payload['data'];
+    if (data is Map<String, dynamic>) {
+      final modelNested = data['model_predicted_risk']?.toString().trim();
+      if (modelNested != null && modelNested.isNotEmpty) {
+        return modelNested;
+      }
+
+      final nested = data['predicted_risk']?.toString().trim();
+      if (nested != null && nested.isNotEmpty) {
+        return nested;
+      }
+
+      final analysis = data['analysis'];
+      if (analysis is Map<String, dynamic>) {
+        final modelAnalysisRisk =
+            analysis['model_predicted_risk']?.toString().trim();
+        if (modelAnalysisRisk != null && modelAnalysisRisk.isNotEmpty) {
+          return modelAnalysisRisk;
+        }
+
+        final analysisRisk = analysis['predicted_risk']?.toString().trim();
+        if (analysisRisk != null && analysisRisk.isNotEmpty) {
+          return analysisRisk;
+        }
+      }
+    }
+
+    final analysis = payload['analysis'];
+    if (analysis is Map<String, dynamic>) {
+      final modelAnalysisRisk =
+          analysis['model_predicted_risk']?.toString().trim();
+      if (modelAnalysisRisk != null && modelAnalysisRisk.isNotEmpty) {
+        return modelAnalysisRisk;
+      }
+
+      final analysisRisk = analysis['predicted_risk']?.toString().trim();
+      if (analysisRisk != null && analysisRisk.isNotEmpty) {
+        return analysisRisk;
+      }
+    }
+
+    return null;
+  }
+
+  Map<String, double> _extractProbabilities(Map<String, dynamic> payload) {
+    final direct = payload['probabilities'];
+    if (direct is Map) {
+      return _asStringDoubleMap(direct);
+    }
+
+    final data = payload['data'];
+    if (data is Map<String, dynamic>) {
+      final nested = data['probabilities'];
+      if (nested is Map) {
+        return _asStringDoubleMap(nested);
+      }
+
+      final analysis = data['analysis'];
+      if (analysis is Map<String, dynamic> &&
+          analysis['probabilities'] is Map) {
+        return _asStringDoubleMap(analysis['probabilities']);
+      }
+    }
+
+    final analysis = payload['analysis'];
+    if (analysis is Map<String, dynamic> && analysis['probabilities'] is Map) {
+      return _asStringDoubleMap(analysis['probabilities']);
+    }
+
+    return <String, double>{};
   }
 
   String? _extractBackendMessage(Map<String, dynamic> payload) {

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -43,6 +45,7 @@ class _MetricsScreenState extends State<MetricsScreen> {
     await context.read<HealthProvider>().loadMetricsOverview(
           period: _selectedPeriod.toLowerCase(),
           token: token,
+          userId: authProvider.currentUser?.id,
         );
   }
 
@@ -194,15 +197,15 @@ class _MetricsScreenState extends State<MetricsScreen> {
                             Expanded(
                               child: ElevatedButton.icon(
                                 onPressed: () {
-                                    _exportReport(
-                                      context: context,
-                                      period: _selectedPeriod,
-                                      scoreValue: scoreValue,
-                                      scoreLabel: scoreLabel,
-                                      insights: insights,
-                                      summary: summary,
-                                      chartPoints: chartPoints,
-                                    );
+                                  _exportReport(
+                                    context: context,
+                                    period: _selectedPeriod,
+                                    scoreValue: scoreValue,
+                                    scoreLabel: scoreLabel,
+                                    insights: insights,
+                                    summary: summary,
+                                    chartPoints: chartPoints,
+                                  );
                                 },
                                 icon: const Icon(Icons.download_rounded),
                                 label: const Text('Export Report'),
@@ -212,11 +215,11 @@ class _MetricsScreenState extends State<MetricsScreen> {
                             Expanded(
                               child: OutlinedButton.icon(
                                 onPressed: () {
-                                    _showFullHistory(
-                                      context: context,
-                                      period: _selectedPeriod,
-                                      chartPoints: chartPoints,
-                                    );
+                                  _showFullHistory(
+                                    context: context,
+                                    period: _selectedPeriod,
+                                    chartPoints: chartPoints,
+                                  );
                                 },
                                 icon: const Icon(Icons.history_toggle_off),
                                 label: const Text('View Full History'),
@@ -487,10 +490,14 @@ class _MetricsScreenState extends State<MetricsScreen> {
                   leftTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
-                      reservedSize: 40,
-                      getTitlesWidget: (value, _) => Text(
-                        '${value.toStringAsFixed(0)}$unit',
-                        style: Theme.of(context).textTheme.bodySmall,
+                      reservedSize: 52,
+                      interval: _axisInterval(minY, maxY),
+                      getTitlesWidget: (value, _) => Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: Text(
+                          '${value.toStringAsFixed(0)}$unit',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
                       ),
                     ),
                   ),
@@ -603,10 +610,14 @@ class _MetricsScreenState extends State<MetricsScreen> {
                   leftTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
-                      reservedSize: 34,
-                      getTitlesWidget: (value, _) => Text(
-                        value.toStringAsFixed(0),
-                        style: Theme.of(context).textTheme.bodySmall,
+                      reservedSize: 46,
+                      interval: _axisInterval(minY, maxY),
+                      getTitlesWidget: (value, _) => Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: Text(
+                          value.toStringAsFixed(0),
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
                       ),
                     ),
                   ),
@@ -784,6 +795,21 @@ class _MetricsScreenState extends State<MetricsScreen> {
     return double.tryParse(value?.toString() ?? '') ?? 0.0;
   }
 
+  double _niceInterval(double value) {
+    if (value <= 0) return 1;
+    final exponent = (math.log(value) / math.ln10).floor();
+    final fraction = value / math.pow(10, exponent);
+    final niceFraction =
+        fraction <= 1 ? 1 : (fraction <= 2 ? 2 : (fraction <= 5 ? 5 : 10));
+    return niceFraction * math.pow(10, exponent).toDouble();
+  }
+
+  double _axisInterval(double minY, double maxY) {
+    final range = (maxY - minY).abs();
+    if (range <= 0) return 1;
+    return _niceInterval(range / 4);
+  }
+
   Future<List<Map<String, dynamic>>> _fetchHistoryPoints(String period) async {
     if (_isHistoryLoading && _historyPeriod == period) return _historyPoints;
 
@@ -825,8 +851,7 @@ class _MetricsScreenState extends State<MetricsScreen> {
     final historyPoints = _historyPeriod == period
         ? _historyPoints
         : await _fetchHistoryPoints(period);
-    final exportPoints =
-        historyPoints.isNotEmpty ? historyPoints : chartPoints;
+    final exportPoints = historyPoints.isNotEmpty ? historyPoints : chartPoints;
 
     final document = pw.Document();
     document.addPage(
@@ -834,12 +859,15 @@ class _MetricsScreenState extends State<MetricsScreen> {
         build: (context) {
           return [
             pw.Text('Metrics Report ($period)',
-                style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+                style:
+                    pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
             pw.SizedBox(height: 8),
             pw.Text('Health Score: ${scoreValue.round()} ($scoreLabel)'),
             pw.SizedBox(height: 12),
             if (insights.isNotEmpty) ...[
-              pw.Text('Key Insights', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+              pw.Text('Key Insights',
+                  style: pw.TextStyle(
+                      fontSize: 16, fontWeight: pw.FontWeight.bold)),
               pw.SizedBox(height: 6),
               ...insights.map((item) {
                 final title = item['title']?.toString() ?? 'Insight';
@@ -850,7 +878,9 @@ class _MetricsScreenState extends State<MetricsScreen> {
               pw.SizedBox(height: 12),
             ],
             if (summary.isNotEmpty) ...[
-              pw.Text('Summary Statistics', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+              pw.Text('Summary Statistics',
+                  style: pw.TextStyle(
+                      fontSize: 16, fontWeight: pw.FontWeight.bold)),
               pw.SizedBox(height: 6),
               ...summary.entries.map((entry) {
                 final formattedKey = entry.key.replaceAll('_', ' ');
@@ -860,17 +890,19 @@ class _MetricsScreenState extends State<MetricsScreen> {
               pw.SizedBox(height: 12),
             ],
             if (exportPoints.isNotEmpty) ...[
-              pw.Text('History', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+              pw.Text('History',
+                  style: pw.TextStyle(
+                      fontSize: 16, fontWeight: pw.FontWeight.bold)),
               pw.SizedBox(height: 6),
               pw.Table.fromTextArray(
                 headers: const ['Time', 'HR', 'SpO2', 'BP', 'Temp'],
                 data: exportPoints.take(200).map((row) {
                   final label = _historyLabel(row, 0);
-                  final hr = _formatNumber(_toDouble(row['"'"'heart_rate'"'"']));
-                  final spo2 = _formatNumber(_toDouble(row['"'"'spo2'"'"']));
+                  final hr = _formatNumber(_toDouble(row['heart_rate']));
+                  final spo2 = _formatNumber(_toDouble(row['spo2']));
                   final bp =
-                      '${_formatNumber(_toDouble(row['"'"'systolic_bp'"'"']))}/${_formatNumber(_toDouble(row['"'"'diastolic_bp'"'"']))}';
-                  final temp = _formatNumber(_toDouble(row['"'"'temperature'"'"']));
+                      '${_formatNumber(_toDouble(row['systolic_bp']))}/${_formatNumber(_toDouble(row['diastolic_bp']))}';
+                  final temp = _formatNumber(_toDouble(row['temperature']));
                   return [label, hr, spo2, bp, temp];
                 }).toList(),
               ),
@@ -951,13 +983,12 @@ class _MetricsScreenState extends State<MetricsScreen> {
                                 children: [
                                   Text(
                                     label,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelLarge,
+                                    style:
+                                        Theme.of(context).textTheme.labelLarge,
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
-                                    'HR ${_formatNumber(_toDouble(row['"'"'heart_rate'"'"']))} bpm · SpO2 ${_formatNumber(_toDouble(row['"'"'spo2'"'"']))}% · BP ${_formatNumber(_toDouble(row['"'"'systolic_bp'"'"']))}/${_formatNumber(_toDouble(row['"'"'diastolic_bp'"'"']))} · Temp ${_formatNumber(_toDouble(row['"'"'temperature'"'"']))} C',
+                                    'HR ${_formatNumber(_toDouble(row['heart_rate']))} bpm · SpO2 ${_formatNumber(_toDouble(row['spo2']))}% · BP ${_formatNumber(_toDouble(row['systolic_bp']))}/${_formatNumber(_toDouble(row['diastolic_bp']))} · Temp ${_formatNumber(_toDouble(row['temperature']))} C',
                                     style:
                                         Theme.of(context).textTheme.bodySmall,
                                   ),

@@ -96,7 +96,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                         child: const Icon(Icons.chevron_left),
                       ),
                       Text(
-                        'Heart Overview',
+                        'Health Overview',
                         style: Theme.of(context).textTheme.headlineSmall,
                       ),
                       TextButton(
@@ -318,10 +318,16 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       return;
     }
 
-    await context.read<HealthProvider>().loadLiveVitalsAndRisk(
-          userId: user.id,
-          token: authProvider.authToken,
-        );
+    final healthProvider = context.read<HealthProvider>();
+    await healthProvider.loadLiveVitalsAndRisk(
+      userId: user.id,
+      token: authProvider.authToken,
+    );
+    await healthProvider.loadClinicalRecommendation(
+      userId: user.id,
+      token: authProvider.authToken,
+      language: 'english',
+    );
   }
 
   Widget _buildMetricCard({

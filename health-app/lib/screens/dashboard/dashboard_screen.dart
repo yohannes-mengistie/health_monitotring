@@ -9,6 +9,7 @@ import 'package:health_monitor_ai/screens/dashboard/widgets/vital_card.dart';
 import 'package:health_monitor_ai/screens/dashboard/widgets/risk_status_card.dart';
 import 'package:health_monitor_ai/screens/dashboard/widgets/quick_actions.dart';
 import 'package:health_monitor_ai/screens/dashboard/widgets/recent_alerts.dart';
+import 'package:health_monitor_ai/screens/dashboard/widgets/measurement_status_card.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({Key? key}) : super(key: key);
@@ -249,27 +250,27 @@ class _DashboardScreenState extends State<DashboardScreen>
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 10),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: ElevatedButton(
-                                    onPressed: () {},
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppTheme.primaryBlue,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 8,
-                                      ),
-                                    ),
-                                    child: const Text(
-                                      'Sync Now',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ),
+                                // const SizedBox(height: 10),
+                                // SizedBox(
+                                //   width: double.infinity,
+                                //   child: ElevatedButton(
+                                //     onPressed: () {},
+                                //     style: ElevatedButton.styleFrom(
+                                //       backgroundColor: AppTheme.primaryBlue,
+                                //       padding: const EdgeInsets.symmetric(
+                                //         horizontal: 12,
+                                //         vertical: 8,
+                                //       ),
+                                //     ),
+                                //     // child: const Text(
+                                //     //   'Sync Now',
+                                //     //   style: TextStyle(
+                                //     //     fontSize: 12,
+                                //     //     fontWeight: FontWeight.w600,
+                                //     //   ),
+                                //     // ),
+                                //   ),
+                                // ),
                               ],
                             )
                           : Row(
@@ -328,6 +329,14 @@ class _DashboardScreenState extends State<DashboardScreen>
               },
             ),
           ),
+          MeasurementStatusCard(
+            state: healthProvider.measurementState,
+            progress: healthProvider.measurementProgress,
+            instruction: statusText,
+            errorCode: healthProvider.measurementError,
+            isUsingCachedData: healthProvider.isUsingCachedData,
+          ),
+          const SizedBox(height: 24),
           // Risk status card
           if (healthProvider.currentAnalysis != null)
             Padding(
@@ -380,19 +389,19 @@ class _DashboardScreenState extends State<DashboardScreen>
                             style: Theme.of(context).textTheme.headlineSmall,
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            statusText,
-                            style:
-                                Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: AppTheme.darkGray,
-                                    ),
-                            textAlign: TextAlign.right,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
+                        // const SizedBox(width: 12),
+                        // Expanded(
+                        //   child: Text(
+                        //     statusText,
+                        //     style:
+                        //         Theme.of(context).textTheme.bodySmall?.copyWith(
+                        //               color: AppTheme.darkGray,
+                        //             ),
+                        //     textAlign: TextAlign.right,
+                        //     maxLines: 2,
+                        //     overflow: TextOverflow.ellipsis,
+                        //   ),
+                        // ),
                       ],
                     ),
                     if (cachedLabel != null) ...[

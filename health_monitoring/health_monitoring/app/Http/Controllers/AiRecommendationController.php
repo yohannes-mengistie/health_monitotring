@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\ClinicalAssessment;
 use App\Models\HealthData;
+use App\Models\RecommendationFeedback;
 use App\Services\AiRecommendationService;
+use App\Services\VitalsTrendService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -14,10 +16,14 @@ use Illuminate\Support\Facades\Validator;
 class AiRecommendationController extends Controller
 {
     protected $aiService;
+    protected $trendsService;
 
-    public function __construct(AiRecommendationService $aiService)
-    {
+    public function __construct(
+        AiRecommendationService $aiService,
+        VitalsTrendService $trendsService
+    ) {
         $this->aiService = $aiService;
+        $this->trendsService = $trendsService;
     }
 
     public function analyze(Request $request)
@@ -59,6 +65,14 @@ class AiRecommendationController extends Controller
         $languageRaw = is_string($languageInput) ? $languageInput : 'english';
         $language = str_starts_with(strtolower($languageRaw), 'am') ? 'amharic' : 'english';
 
+        $recentFeedback = RecommendationFeedback::where('user_id', $user->id)
+            ->latest()
+            ->limit(3)
+            ->with('clinicalAssessment:id,symptom_label,risk_level')
+            ->get()
+            ->map(fn($f) => "{$f->action} on {$f->clinicalAssessment?->symptom_label} ({$f->clinicalAssessment?->risk_level} risk)")
+            ->implode('; ');
+
         $result = $this->aiService->getRecommendation(
             bpm: $request->bpm,
             spo2: $request->spo2,
@@ -67,11 +81,12 @@ class AiRecommendationController extends Controller
             diastolicBp: $request->diastolic_bp,
             userNote: $request->user_note,
             currentFeeling: $request->input('current_feeling'),
-            historySummary: $request->input('history_summary'),
+            historySummary: $this->trendsService->getSummaryForUser($user->id),
             structuredAssessment: is_array($structuredAssessment)
                 ? $structuredAssessment
                 : null,
             language: $language,
+            feedbackContext: $recentFeedback ?: null,
         );
 
         $this->storeClinicalAssessment(
@@ -81,6 +96,7 @@ class AiRecommendationController extends Controller
                 ? $structuredAssessment
                 : null,
             aiResult: $result,
+            vitals: $validator->validated(),
         );
 
         return response()->json($result);
@@ -116,7 +132,7 @@ class AiRecommendationController extends Controller
             diastolicBp: (float)$latest->diastolic_bp,
             userNote: $request->input('user_note'),
             currentFeeling: $request->input('current_feeling'),
-            historySummary: $request->input('history_summary'),
+            historySummary: $this->trendsService->getSummaryForUser($user->id),
             structuredAssessment: is_array($request->input('structured_assessment'))
                 ? $request->input('structured_assessment')
                 : null,
@@ -138,11 +154,117 @@ class AiRecommendationController extends Controller
         ]);
     }
 
+    public function history(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['success' => false, 'error' => 'Unauthenticated'], 401);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'limit' => 'nullable|integer|min:1|max:50',
+            'offset' => 'nullable|integer|min:0',
+            'from_date' => 'nullable|date',
+            'to_date' => 'nullable|date|after_or_equal:from_date',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $query = ClinicalAssessment::where('user_id', $user->id)
+            ->orderByDesc('created_at');
+
+        if ($request->filled('from_date')) {
+            $query->whereDate('created_at', '>=', $request->from_date);
+        }
+        if ($request->filled('to_date')) {
+            $query->whereDate('created_at', '<=', $request->to_date);
+        }
+
+        $limit = (int) $request->input('limit', 10);
+        $offset = (int) $request->input('offset', 0);
+
+        $total = $query->count();
+        $items = $query->skip($offset)->take($limit)->get([
+            'id',
+            'symptom_label',
+            'severity',
+            'high_risk',
+            'risk_level',
+            'ai_success',
+            'ai_model',
+            'recommendation_excerpt',
+            'structured_response',
+            'known_conditions',
+            'medication_taken_today',
+            'created_at',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'total' => $total,
+            'limit' => $limit,
+            'offset' => $offset,
+            'items' => $items,
+        ]);
+    }
+
+    public function show(int $id)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['success' => false, 'error' => 'Unauthenticated'], 401);
+        }
+        $record = ClinicalAssessment::where('id', $id)
+            ->where('user_id', $user->id)
+            ->first();
+        if (!$record) {
+            return response()->json(['success' => false, 'error' => 'Not found'], 404);
+        }
+        return response()->json(['success' => true, 'item' => $record]);
+    }
+
+    public function feedback(Request $request, int $id)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['success' => false, 'error' => 'Unauthenticated'], 401);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'action' => 'required|in:viewed,dismissed,followed,shared',
+            'note' => 'nullable|string|max:500',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $record = ClinicalAssessment::where('id', $id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (!$record) {
+            return response()->json(['success' => false, 'error' => 'Recommendation not found'], 404);
+        }
+
+        $fb = RecommendationFeedback::create([
+            'clinical_assessment_id' => $id,
+            'user_id' => $user->id,
+            'action' => $request->action,
+            'note' => $request->note,
+        ]);
+
+        return response()->json(['success' => true, 'feedback_id' => $fb->id]);
+    }
+
     private function storeClinicalAssessment(
         int $userId,
         string $sourceEndpoint,
         ?array $structuredAssessment,
-        array $aiResult
+        array $aiResult,
+        array $vitals = []
     ): void {
         if (empty($structuredAssessment)) {
             return;
@@ -211,6 +333,21 @@ class AiRecommendationController extends Controller
                 'predicted_risk' => isset($aiResult['predicted_risk'])
                     ? (string) $aiResult['predicted_risk']
                     : null,
+                'risk_level' => $aiResult['structured']['risk_level'] ?? null,
+                'structured_response' => $aiResult['structured'] ?? null,
+                'language' => $aiResult['language'] ?? 'english',
+                'requires_review' => in_array(
+                    $aiResult['structured']['risk_level'] ?? '',
+                    ['high', 'critical'],
+                    true
+                ),
+                'vitals_snapshot' => [
+                    'bpm' => $vitals['bpm'] ?? null,
+                    'spo2' => $vitals['spo2'] ?? null,
+                    'temperature' => $vitals['temperature'] ?? null,
+                    'systolic_bp' => $vitals['systolic_bp'] ?? null,
+                    'diastolic_bp' => $vitals['diastolic_bp'] ?? null,
+                ],
                 'recommendation_excerpt' => $excerpt,
             ]);
         } catch (\Throwable $e) {

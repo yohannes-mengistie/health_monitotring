@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:health_monitor_ai/config/app_theme.dart';
@@ -13,19 +15,27 @@ class RecommendationsScreen extends StatefulWidget {
   State<RecommendationsScreen> createState() => _RecommendationsScreenState();
 }
 
-class _RecommendationsScreenState extends State<RecommendationsScreen> {
+class _RecommendationsScreenState extends State<RecommendationsScreen>
+    with TickerProviderStateMixin {
   String? _selectedLanguageCode;
   final Set<String> _selectedSymptomKeys = <String>{};
   bool _noQuickSymptoms = false;
   int _followUpIndex = 0;
   final Map<String, _OpqrstAnswers> _opqrstAnswers = {};
   bool? _redFlagAnswer;
+  final ScrollController _scrollController = ScrollController();
+  final GlobalKey _opqrstSectionKey = GlobalKey();
 
   bool _hasHypertension = false;
   bool _hasDiabetes = false;
   bool _hasHighCholesterol = false;
   String? _medicationAnswer;
   bool _noBackgroundConditions = false;
+
+  late final AnimationController _pulseController;
+  late final Animation<double> _pulseOpacity;
+  late final AnimationController _blinkController;
+  late final Animation<double> _blinkOpacity;
 
   bool _isAmharic(BuildContext context) {
     final localeCode = Localizations.localeOf(context).languageCode;
@@ -164,7 +174,7 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
 
   bool _isCoreAssessmentComplete(BuildContext context) {
     if (_noQuickSymptoms) {
-      return _medicationAnswer != null;
+      return _noBackgroundConditions || _medicationAnswer != null;
     }
 
     if (_selectedSymptomKeys.isEmpty) return false;
@@ -176,7 +186,7 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
       }
     }
 
-    if (_medicationAnswer == null) return false;
+    if (!_noBackgroundConditions && _medicationAnswer == null) return false;
     if (_hasAnyHighRiskSymptom(context) && _redFlagAnswer == null) return false;
     return true;
   }
@@ -234,6 +244,10 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
       'en': 'Timing: Is it constant or intermittent?',
       'am': 'ጊዜ: ቋሚ ነው ወይስ እየመለሰ የሚመጣ?',
     },
+    'qualityFallback': {
+      'en': 'Quality: Describe how it feels',
+      'am': 'ጥራት: እንዴት እንደሚሰማ ይግለጹ',
+    },
     'severityLabel': {
       'en': 'Severity',
       'am': 'የህመም ጥንካሬ',
@@ -287,6 +301,26 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
     'submit': {
       'en': 'Submit to AI',
       'am': 'ለAI ላክ',
+    },
+    'tempTooHigh': {
+      'en': 'Temperature is too high. Check the sensor reading.',
+      'am': 'የሙቀት መጠን ከፍ ነው። የሴንሰሩን ንባብ ያረጋግጡ።',
+    },
+    'tempTooLow': {
+      'en': 'Temperature is too low. Check the sensor reading.',
+      'am': 'የሙቀት መጠን በጣም ዝቅ ነው። የሴንሰሩን ንባብ ያረጋግጡ።',
+    },
+    'authExpired': {
+      'en': 'Session expired. Please sign in again.',
+      'am': 'ክፍለ ጊዜው አልፎታል። እባክዎ ደግመው ይግቡ።',
+    },
+    'aiUnavailable': {
+      'en': 'AI service is unavailable. Try again shortly.',
+      'am': 'የAI አገልግሎት አልተገኘም። በጥቂት ጊዜ ይሞክሩ።',
+    },
+    'submitFailed': {
+      'en': 'Submit failed. Please check your data and try again.',
+      'am': 'መላክ አልተሳካም። መረጃዎን ያረጋግጡና ደግመው ይሞክሩ።',
     },
     'submitting': {
       'en': 'Submitting...',
@@ -354,12 +388,36 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
   @override
   void initState() {
     super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+    _pulseOpacity = Tween<double>(begin: 0.10, end: 0.20).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+
+    _blinkController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    )..repeat(reverse: true);
+    _blinkOpacity = Tween<double>(begin: 1.0, end: 0.4).animate(
+      CurvedAnimation(parent: _blinkController, curve: Curves.easeInOut),
+    );
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       setState(() {
         _selectedLanguageCode = Localizations.localeOf(context).languageCode;
       });
     });
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    _blinkController.dispose();
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadRecommendation() async {
@@ -402,6 +460,40 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
       currentFeeling: feelingParts.join(' | '),
       structuredAssessment: structuredAssessment,
     );
+
+    if (!mounted) return;
+
+    final errorMessage = healthProvider.errorMessage;
+    if (errorMessage != null && errorMessage.trim().isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_shortErrorMessage(errorMessage)),
+          backgroundColor: AppTheme.accentRed,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  String _shortErrorMessage(String message) {
+    final lower = message.toLowerCase();
+    if (lower.contains('temperature') && lower.contains('greater')) {
+      return _t(context, 'tempTooHigh');
+    }
+    if (lower.contains('temperature') && lower.contains('less')) {
+      return _t(context, 'tempTooLow');
+    }
+    if (lower.contains('unauthenticated') || lower.contains('token')) {
+      return _t(context, 'authExpired');
+    }
+    if (lower.contains('rate_limited') || lower.contains('too many')) {
+      return 'Too many requests. Please wait a few minutes and try again.';
+    }
+    if (lower.contains('ai recommendation')) {
+      return _t(context, 'aiUnavailable');
+    }
+
+    return _t(context, 'submitFailed');
   }
 
   Future<void> _showLanguagePicker() async {
@@ -455,6 +547,7 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
             textTheme: _amharicTextTheme(baseTheme.textTheme),
           )
         : baseTheme;
+    final navHealthProvider = context.watch<HealthProvider>();
 
     return Theme(
       data: theme,
@@ -479,6 +572,7 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
               return LayoutBuilder(
                 builder: (context, constraints) {
                   return SingleChildScrollView(
+                    controller: _scrollController,
                     padding: const EdgeInsets.all(20),
                     child: Column(
                       children: [
@@ -486,6 +580,22 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                           const SizedBox(height: 2),
                           const LinearProgressIndicator(minHeight: 2),
                           const SizedBox(height: 12),
+                        ],
+                        if (!healthProvider.isLoading &&
+                            healthProvider.errorMessage != null) ...[
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Text(
+                              healthProvider.errorMessage!,
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color: Colors.redAccent,
+                                  ),
+                            ),
+                          ),
                         ],
                         _buildPromptComposer(
                           context,
@@ -501,8 +611,8 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
 
             final recommendation = healthProvider.currentRecommendation!;
             final localeCode = Localizations.localeOf(context).languageCode;
-            final parsedReport = _LocalizedReport.fromRawText(
-              _normalizeRecommendationText(recommendation.actionPlan),
+            final parsedReport = _parseRecommendationOutput(
+              recommendation.actionPlan,
               recommendation.medicalDisclaimer,
             );
 
@@ -531,6 +641,7 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                     ),
                   ),
                   child: SingleChildScrollView(
+                    controller: _scrollController,
                     padding: const EdgeInsets.all(20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -548,6 +659,8 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                           onRefreshPressed: _loadRecommendation,
                           isRefreshing: healthProvider.isLoading,
                         ),
+                        const SizedBox(height: 12),
+                        _buildVitalsStrip(context, healthProvider),
                         if (parsedReport.hasMultipleLanguages) ...[
                           const SizedBox(height: 16),
                           _buildLanguageToggle(
@@ -585,12 +698,16 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                           ],
                         ),
                         const SizedBox(height: 12),
-                        ...reportVersion.sections.map(
-                          (section) => Padding(
-                            padding: const EdgeInsets.only(bottom: 14),
-                            child: _buildSectionCard(context, section),
-                          ),
-                        ),
+                        ...reportVersion.sections.asMap().entries.map(
+                              (entry) => Padding(
+                                padding: const EdgeInsets.only(bottom: 14),
+                                child: _buildSectionCard(
+                                  context,
+                                  entry.value,
+                                  animationIndex: entry.key,
+                                ),
+                              ),
+                            ),
                         if (reportVersion.disclaimer != null) ...[
                           const SizedBox(height: 8),
                           _buildDisclaimerCard(
@@ -631,573 +748,757 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
 
     return ConstrainedBox(
       constraints: BoxConstraints(minHeight: minHeight ?? 0),
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: AppTheme.white,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: AppTheme.mediumGray.withOpacity(0.8)),
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.primaryBlue.withOpacity(0.06),
-              blurRadius: 18,
-              offset: const Offset(0, 8),
+      child: Stack(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: AppTheme.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: AppTheme.mediumGray.withOpacity(0.8)),
             ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryBlue.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    Icons.psychology_alt_outlined,
-                    color: AppTheme.primaryBlue,
-                    size: 18,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    _t(context, 'tellAi'),
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 18),
-            _buildSectionLabel(
-              context,
-              icon: Icons.bolt,
-              label: _t(context, 'quickSymptoms'),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              _t(context, 'quickSymptomsHint'),
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 10),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppTheme.lightGray,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppTheme.mediumGray.withOpacity(0.8)),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      _t(context, 'noQuickSymptoms'),
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
+                Row(
+                  children: [
+                    AnimatedBuilder(
+                      animation: _pulseController,
+                      builder: (context, child) {
+                        return AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryBlue
+                                .withOpacity(_pulseOpacity.value),
+                            borderRadius: BorderRadius.circular(10),
                           ),
+                          child: child,
+                        );
+                      },
+                      child: const Icon(
+                        Icons.psychology_alt_outlined,
+                        color: AppTheme.primaryBlue,
+                        size: 18,
+                      ),
                     ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _t(context, 'tellAi'),
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                _buildSectionLabel(
+                  context,
+                  icon: Icons.bolt,
+                  label: _t(context, 'quickSymptoms'),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _t(context, 'quickSymptomsHint'),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.lightGray,
+                    borderRadius: BorderRadius.circular(12),
+                    border:
+                        Border.all(color: AppTheme.mediumGray.withOpacity(0.8)),
                   ),
-                  Switch.adaptive(
-                    value: _noQuickSymptoms,
-                    onChanged: (value) {
-                      setState(() {
-                        _noQuickSymptoms = value;
-                        if (value) {
-                          _selectedSymptomKeys.clear();
-                          _opqrstAnswers.clear();
-                          _followUpIndex = 0;
-                          _redFlagAnswer = null;
-                        }
-                      });
-                    },
-                    activeColor: AppTheme.primaryBlue,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _t(context, 'noQuickSymptoms'),
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                        ),
+                      ),
+                      Switch.adaptive(
+                        value: _noQuickSymptoms,
+                        onChanged: (value) {
+                          setState(() {
+                            _noQuickSymptoms = value;
+                            if (value) {
+                              _selectedSymptomKeys.clear();
+                              _opqrstAnswers.clear();
+                              _followUpIndex = 0;
+                              _redFlagAnswer = null;
+                            }
+                          });
+                        },
+                        activeColor: AppTheme.primaryBlue,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                if (!_noQuickSymptoms) ...[
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: _symptomOptions(context).map((option) {
+                      final selected =
+                          _selectedSymptomKeys.contains(option.key);
+                      final isHighRisk = option.isHighRisk;
+
+                      return InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () {
+                          setState(() {
+                            _noQuickSymptoms = false;
+                            if (selected) {
+                              _selectedSymptomKeys.remove(option.key);
+                              _opqrstAnswers.remove(option.key);
+                            } else {
+                              _selectedSymptomKeys.add(option.key);
+                              _answersFor(option.key);
+                            }
+
+                            debugPrint(
+                              'OPQRST select: key=${option.key} selected=$selected total=${_selectedSymptomKeys.length}',
+                            );
+
+                            if (_selectedSymptomKeys.isEmpty) {
+                              _redFlagAnswer = null;
+                              _followUpIndex = 0;
+                              debugPrint(
+                                  'OPQRST cleared: no symptoms selected');
+                              return;
+                            }
+
+                            final total = _selectedSymptoms(context).length;
+                            if (_followUpIndex >= total) {
+                              _followUpIndex = total - 1;
+                            }
+
+                            debugPrint(
+                              'OPQRST active: followUpIndex=$_followUpIndex totalSymptoms=$total',
+                            );
+
+                            if (!_hasAnyHighRiskSymptom(context)) {
+                              _redFlagAnswer = null;
+                            }
+                          });
+
+                          if (!selected && !_noQuickSymptoms) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              final opqrstContext =
+                                  _opqrstSectionKey.currentContext;
+                              if (opqrstContext == null) return;
+                              Scrollable.ensureVisible(
+                                opqrstContext,
+                                duration: const Duration(milliseconds: 350),
+                                curve: Curves.easeOut,
+                              );
+                            });
+                          }
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: selected
+                                ? AppTheme.primaryBlue.withOpacity(0.10)
+                                : AppTheme.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: selected
+                                  ? AppTheme.primaryBlue
+                                  : AppTheme.mediumGray,
+                              width: selected ? 1.5 : 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (isHighRisk && !selected) ...[
+                                Container(
+                                  width: 4,
+                                  height: 4,
+                                  decoration: const BoxDecoration(
+                                    color: AppTheme.accentRed,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                              ],
+                              Icon(
+                                option.icon,
+                                size: 17,
+                                color: selected
+                                    ? AppTheme.primaryBlue
+                                    : (isHighRisk
+                                        ? AppTheme.accentRed
+                                        : AppTheme.darkGray),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                option.label,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelLarge
+                                    ?.copyWith(
+                                      color: AppTheme.veryDarkGray,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                              ),
+                              if (selected) ...[
+                                const SizedBox(width: 8),
+                                const Icon(
+                                  Icons.check_circle,
+                                  size: 16,
+                                  color: AppTheme.primaryBlue,
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
                   ),
                 ],
-              ),
-            ),
-            const SizedBox(height: 10),
-            if (!_noQuickSymptoms) ...[
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: _symptomOptions(context).map((option) {
-                  final selected = _selectedSymptomKeys.contains(option.key);
-                  final isHighRisk = option.isHighRisk;
-
-                  return InkWell(
-                    borderRadius: BorderRadius.circular(999),
-                    onTap: () {
-                      setState(() {
-                        _noQuickSymptoms = false;
-                        if (selected) {
-                          _selectedSymptomKeys.remove(option.key);
-                          _opqrstAnswers.remove(option.key);
-                        } else {
-                          _selectedSymptomKeys.add(option.key);
-                          _answersFor(option.key);
-                        }
-
-                        if (_selectedSymptomKeys.isEmpty) {
-                          _redFlagAnswer = null;
-                          _followUpIndex = 0;
-                          return;
-                        }
-
-                        final total = _selectedSymptoms(context).length;
-                        if (_followUpIndex >= total) {
-                          _followUpIndex = total - 1;
-                        }
-
-                        if (!_hasAnyHighRiskSymptom(context)) {
-                          _redFlagAnswer = null;
-                        }
-                      });
+                if (!_noQuickSymptoms && symptom != null) ...[
+                  const SizedBox(height: 16),
+                  Builder(
+                    builder: (context) {
+                      debugPrint(
+                        'OPQRST render: key=${symptom.key} qualityOptions=${symptom.qualityOptions.length} onsetOptions=${_onsetOptions(context).length}',
+                      );
+                      return const SizedBox.shrink();
                     },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: selected
-                            ? AppTheme.primaryBlue.withOpacity(0.12)
-                            : AppTheme.white,
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(
-                          color: selected
-                              ? AppTheme.primaryBlue
-                              : (isHighRisk
-                                  ? AppTheme.accentRed.withOpacity(0.45)
-                                  : AppTheme.mediumGray),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: selected
-                                ? AppTheme.primaryBlue.withOpacity(0.08)
-                                : Colors.black.withOpacity(0.03),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
+                  ),
+                  Container(
+                    key: _opqrstSectionKey,
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppTheme.white,
+                      borderRadius: const BorderRadius.only(
+                        topRight: Radius.circular(16),
+                        bottomRight: Radius.circular(16),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            option.icon,
-                            size: 17,
-                            color: selected
-                                ? AppTheme.primaryBlue
-                                : (isHighRisk
-                                    ? AppTheme.accentRed
-                                    : AppTheme.darkGray),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            option.label,
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelLarge
-                                ?.copyWith(
-                                  color: AppTheme.veryDarkGray,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                          ),
-                          if (selected) ...[
-                            const SizedBox(width: 8),
-                            const Icon(
-                              Icons.check_circle,
-                              size: 16,
+                      border: Border.all(
+                        color: AppTheme.mediumGray.withOpacity(0.7),
+                      ),
+                    ),
+                    child: Stack(
+                      children: [
+                        Positioned(
+                          left: 0,
+                          top: 0,
+                          bottom: 0,
+                          child: Container(
+                            width: 3,
+                            decoration: const BoxDecoration(
                               color: AppTheme.primaryBlue,
+                              borderRadius: BorderRadius.only(
+                                topLeft: Radius.circular(16),
+                                bottomLeft: Radius.circular(16),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8),
+                          child: DefaultTextStyle.merge(
+                            style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(
+                                      color: AppTheme.veryDarkGray,
+                                    ) ??
+                                const TextStyle(color: AppTheme.veryDarkGray),
+                            child: IconTheme.merge(
+                              data: const IconThemeData(
+                                color: AppTheme.primaryBlue,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildSectionLabel(
+                                    context,
+                                    icon: Icons.assignment_turned_in_outlined,
+                                    label: _t(context, 'followUp'),
+                                  ),
+                                  // const SizedBox(height: 6),
+                                  // Container(
+                                  //   width: double.infinity,
+                                  //   padding: const EdgeInsets.all(10),
+                                  //   decoration: BoxDecoration(
+                                  //     color: AppTheme.lightGray,
+                                  //     borderRadius: BorderRadius.circular(10),
+                                  //     border: Border.all(
+                                  //       color: AppTheme.primaryBlue.withOpacity(0.3),
+                                  //     ),
+                                  //   ),
+
+                                  // ),
+                                  // const SizedBox(height: 8),
+                                  // Text(
+                                  //   totalSymptoms > 1
+                                  //       ? '${symptom.label} (${currentIndex + 1}/$totalSymptoms)'
+                                  //       : symptom.label,
+                                  //   style: Theme.of(context)
+                                  //       .textTheme
+                                  //       .bodySmall
+                                  //       ?.copyWith(
+                                  //         color: AppTheme.darkGray,
+                                  //         fontWeight: FontWeight.w600,
+                                  //       ),
+                                  // ),
+                                  // const SizedBox(height: 10),
+                                  // LinearProgressIndicator(
+                                  //   value: () {
+                                  //     if (answers == null) return 0.0;
+                                  //     var completed = 0;
+                                  //     if (answers.onset != null) completed += 1;
+                                  //     if (answers.quality != null) completed += 1;
+                                  //     if (answers.timing != null) completed += 1;
+                                  //     if (answers.severity != null) completed += 1;
+                                  //     return completed / 4;
+                                  //   }(),
+                                  //   minHeight: 6,
+                                  //   backgroundColor: AppTheme.lightGray,
+                                  //   valueColor: const AlwaysStoppedAnimation(
+                                  //     AppTheme.primaryBlue,
+                                  //   ),
+                                  // ),
+                                  const SizedBox(height: 12),
+                                  _buildChoiceField(
+                                    context,
+                                    title: _t(context, 'onsetTitle'),
+                                    icon: Icons.schedule_outlined,
+                                    options: _onsetOptions(context),
+                                    selectedValue: answers?.onset,
+                                    onSelected: (value) {
+                                      setState(() {
+                                        _opqrstAnswers[currentKey!] =
+                                            answers!.copyWith(onset: value);
+                                      });
+                                    },
+                                  ),
+                                  const SizedBox(height: 12),
+                                  _buildChoiceField(
+                                    context,
+                                    title: () {
+                                      final question =
+                                          symptom.qualityQuestion.trim();
+                                      if (question.isEmpty) {
+                                        return _t(context, 'qualityFallback');
+                                      }
+                                      return isAmharic
+                                          ? 'ጥራት: $question'
+                                          : 'Quality: $question';
+                                    }(),
+                                    icon: Icons.health_and_safety_outlined,
+                                    options: symptom.qualityOptions,
+                                    selectedValue: answers?.quality,
+                                    onSelected: (value) {
+                                      setState(() {
+                                        _opqrstAnswers[currentKey!] =
+                                            answers!.copyWith(quality: value);
+                                      });
+                                    },
+                                  ),
+                                  if (symptom.qualityOptions.isEmpty) ...[
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'No quality options configured for this symptom.',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(color: AppTheme.accentRed),
+                                    ),
+                                  ],
+                                  const SizedBox(height: 10),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 10,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.white,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                          color: AppTheme.mediumGray
+                                              .withOpacity(0.8)),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.local_hospital_outlined,
+                                          color: AppTheme.primaryBlue,
+                                          size: 18,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            '${_t(context, 'severityLabel')}: ${answers?.severity?.round() ?? 5}/10',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .labelLarge
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.w700,
+                                                  color: AppTheme.veryDarkGray,
+                                                ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Slider(
+                                    value: answers?.severity ?? 5,
+                                    min: 1,
+                                    max: 10,
+                                    divisions: 9,
+                                    label: (answers?.severity ?? 5)
+                                        .round()
+                                        .toString(),
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _opqrstAnswers[currentKey!] =
+                                            answers!.copyWith(severity: value);
+                                      });
+                                    },
+                                  ),
+                                  const SizedBox(height: 2),
+                                  _buildChoiceField(
+                                    context,
+                                    title: _t(context, 'timingTitle'),
+                                    icon: Icons.timelapse_outlined,
+                                    options: _timingOptions(context),
+                                    selectedValue: answers?.timing,
+                                    onSelected: (value) {
+                                      setState(() {
+                                        _opqrstAnswers[currentKey!] =
+                                            answers!.copyWith(timing: value);
+                                      });
+                                    },
+                                  ),
+                                  if (totalSymptoms > 1) ...[
+                                    const SizedBox(height: 12),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: OutlinedButton(
+                                            onPressed: currentIndex > 0
+                                                ? () {
+                                                    setState(() {
+                                                      _followUpIndex =
+                                                          currentIndex - 1;
+                                                    });
+                                                  }
+                                                : null,
+                                            child: const Text('Previous'),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: ElevatedButton(
+                                            onPressed:
+                                                currentIndex < totalSymptoms - 1
+                                                    ? () {
+                                                        setState(() {
+                                                          _followUpIndex =
+                                                              currentIndex + 1;
+                                                        });
+                                                      }
+                                                    : null,
+                                            child: const Text('Next'),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                if (!_noQuickSymptoms && _hasAnyHighRiskSymptom(context)) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppTheme.accentRed.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                          color: AppTheme.accentRed.withOpacity(0.3)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            FadeTransition(
+                              opacity: _blinkOpacity,
+                              child: Icon(
+                                Icons.warning_rounded,
+                                color: AppTheme.accentRed,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _t(context, 'redFlag'),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleSmall
+                                    ?.copyWith(
+                                      color: AppTheme.accentRed,
+                                    ),
+                              ),
                             ),
                           ],
-                        ],
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
-            if (!_noQuickSymptoms && symptom != null) ...[
-              const SizedBox(height: 16),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppTheme.lightGray,
-                  borderRadius: BorderRadius.circular(16),
-                  border:
-                      Border.all(color: AppTheme.mediumGray.withOpacity(0.7)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildSectionLabel(
-                      context,
-                      icon: Icons.assignment_turned_in_outlined,
-                      label: _t(context, 'followUp'),
-                    ),
-                    if (totalSymptoms > 1) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        '${symptom.label} (${currentIndex + 1}/$totalSymptoms)',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppTheme.darkGray,
-                              fontWeight: FontWeight.w600,
-                            ),
-                      ),
-                    ],
-                    const SizedBox(height: 12),
-                    _buildChoiceField(
-                      context,
-                      title: _t(context, 'onsetTitle'),
-                      icon: Icons.schedule_outlined,
-                      options: _onsetOptions(context),
-                      selectedValue: answers?.onset,
-                      onSelected: (value) {
-                        setState(() {
-                          _opqrstAnswers[currentKey!] =
-                              answers!.copyWith(onset: value);
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    _buildChoiceField(
-                      context,
-                      title: isAmharic
-                          ? 'ጥራት: ${symptom.qualityQuestion}'
-                          : 'Quality: ${symptom.qualityQuestion}',
-                      icon: Icons.health_and_safety_outlined,
-                      options: symptom.qualityOptions,
-                      selectedValue: answers?.quality,
-                      onSelected: (value) {
-                        setState(() {
-                          _opqrstAnswers[currentKey!] =
-                              answers!.copyWith(quality: value);
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 10),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppTheme.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                            color: AppTheme.mediumGray.withOpacity(0.8)),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.local_hospital_outlined,
-                            color: AppTheme.primaryBlue,
-                            size: 18,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              '${_t(context, 'severityLabel')}: ${answers?.severity?.round() ?? 5}/10',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelLarge
-                                  ?.copyWith(fontWeight: FontWeight.w700),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Slider(
-                      value: answers?.severity ?? 5,
-                      min: 1,
-                      max: 10,
-                      divisions: 9,
-                      label: (answers?.severity ?? 5).round().toString(),
-                      onChanged: (value) {
-                        setState(() {
-                          _opqrstAnswers[currentKey!] =
-                              answers!.copyWith(severity: value);
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 2),
-                    _buildChoiceField(
-                      context,
-                      title: _t(context, 'timingTitle'),
-                      icon: Icons.timelapse_outlined,
-                      options: _timingOptions(context),
-                      selectedValue: answers?.timing,
-                      onSelected: (value) {
-                        setState(() {
-                          _opqrstAnswers[currentKey!] =
-                              answers!.copyWith(timing: value);
-                        });
-                      },
-                    ),
-                    if (totalSymptoms > 1) ...[
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: currentIndex > 0
-                                  ? () {
-                                      setState(() {
-                                        _followUpIndex = currentIndex - 1;
-                                      });
-                                    }
-                                  : null,
-                              child: const Text('Previous'),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: currentIndex < totalSymptoms - 1
-                                  ? () {
-                                      setState(() {
-                                        _followUpIndex = currentIndex + 1;
-                                      });
-                                    }
-                                  : null,
-                              child: const Text('Next'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-            if (!_noQuickSymptoms && _hasAnyHighRiskSymptom(context)) ...[
-              const SizedBox(height: 16),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppTheme.accentRed.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(16),
-                  border:
-                      Border.all(color: AppTheme.accentRed.withOpacity(0.3)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.priority_high_rounded,
-                          color: AppTheme.accentRed,
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _t(context, 'redFlag'),
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleSmall
-                                ?.copyWith(
-                                  color: AppTheme.accentRed,
-                                ),
-                          ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _t(context, 'redFlagQuestion'),
+                          style: Theme.of(context).textTheme.bodyMedium,
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _t(context, 'redFlagQuestion'),
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 10,
-                      children: [
-                        ChoiceChip(
-                          label: Text(_t(context, 'yes')),
-                          selected: _redFlagAnswer == true,
-                          selectedColor: AppTheme.accentRed.withOpacity(0.2),
-                          onSelected: (_) {
-                            setState(() {
-                              _redFlagAnswer = true;
-                            });
-                          },
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 10,
+                          children: [
+                            ChoiceChip(
+                              label: Text(_t(context, 'yes')),
+                              selected: _redFlagAnswer == true,
+                              selectedColor:
+                                  AppTheme.accentRed.withOpacity(0.2),
+                              onSelected: (_) {
+                                setState(() {
+                                  _redFlagAnswer = true;
+                                });
+                              },
+                            ),
+                            ChoiceChip(
+                              label: Text(_t(context, 'no')),
+                              selected: _redFlagAnswer == false,
+                              selectedColor:
+                                  AppTheme.accentGreen.withOpacity(0.2),
+                              onSelected: (_) {
+                                setState(() {
+                                  _redFlagAnswer = false;
+                                });
+                              },
+                            ),
+                          ],
                         ),
-                        ChoiceChip(
-                          label: Text(_t(context, 'no')),
-                          selected: _redFlagAnswer == false,
-                          selectedColor: AppTheme.accentGreen.withOpacity(0.2),
-                          onSelected: (_) {
-                            setState(() {
-                              _redFlagAnswer = false;
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-                    if (_redFlagAnswer == true) ...[
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(_t(context, 'emergencyMessage')),
+                        if (_redFlagAnswer == true) ...[
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content:
+                                        Text(_t(context, 'emergencyMessage')),
+                                    backgroundColor: AppTheme.accentRed,
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
                                 backgroundColor: AppTheme.accentRed,
+                                foregroundColor: AppTheme.white,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
                               ),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.accentRed,
-                            foregroundColor: AppTheme.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
+                              icon: const Icon(Icons.call),
+                              label: Text(
+                                _t(context, 'callEmergency'),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w700),
+                              ),
+                            ),
                           ),
-                          icon: const Icon(Icons.call),
-                          label: Text(
-                            _t(context, 'callEmergency'),
-                            style: const TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-            const SizedBox(height: 16),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppTheme.lightGray,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppTheme.mediumGray.withOpacity(0.7)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildSectionLabel(
-                    context,
-                    icon: Icons.medical_information_outlined,
-                    label: _t(context, 'background'),
-                  ),
-                  const SizedBox(height: 6),
-                  _buildConditionToggle(
-                    context,
-                    label: _isAmharic(context)
-                        ? 'ሌላ የታሪክ በሽታ የለኝም'
-                        : 'No background conditions',
-                    value: _noBackgroundConditions,
-                    onChanged: (value) {
-                      setState(() {
-                        _noBackgroundConditions = value;
-                        if (value) {
-                          _hasHypertension = false;
-                          _hasDiabetes = false;
-                          _hasHighCholesterol = false;
-                        }
-                      });
-                    },
-                  ),
-                  _buildConditionToggle(
-                    context,
-                    label: _t(context, 'hypertension'),
-                    value: _hasHypertension,
-                    enabled: !_noBackgroundConditions,
-                    onChanged: (value) {
-                      setState(() {
-                        _hasHypertension = value;
-                        if (value) {
-                          _noBackgroundConditions = false;
-                        }
-                      });
-                    },
-                  ),
-                  _buildConditionToggle(
-                    context,
-                    label: _t(context, 'diabetes'),
-                    value: _hasDiabetes,
-                    enabled: !_noBackgroundConditions,
-                    onChanged: (value) {
-                      setState(() {
-                        _hasDiabetes = value;
-                        if (value) {
-                          _noBackgroundConditions = false;
-                        }
-                      });
-                    },
-                  ),
-                  _buildConditionToggle(
-                    context,
-                    label: _t(context, 'cholesterol'),
-                    value: _hasHighCholesterol,
-                    enabled: !_noBackgroundConditions,
-                    onChanged: (value) {
-                      setState(() {
-                        _hasHighCholesterol = value;
-                        if (value) {
-                          _noBackgroundConditions = false;
-                        }
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 4),
-                  _buildChoiceField(
-                    context,
-                    title: _t(context, 'medicationQuestion'),
-                    icon: Icons.medication_outlined,
-                    options: _medicationOptions(context),
-                    selectedValue: _medicationAnswer,
-                    onSelected: (value) {
-                      setState(() {
-                        _medicationAnswer = value;
-                      });
-                    },
+                        ],
+                      ],
+                    ),
                   ),
                 ],
-              ),
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.lightGray,
+                    borderRadius: BorderRadius.circular(16),
+                    border:
+                        Border.all(color: AppTheme.mediumGray.withOpacity(0.7)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildSectionLabel(
+                        context,
+                        icon: Icons.medical_information_outlined,
+                        label: _t(context, 'background'),
+                      ),
+                      const SizedBox(height: 6),
+                      _buildConditionToggle(
+                        context,
+                        label: _isAmharic(context)
+                            ? 'ሌላ የታሪክ በሽታ የለኝም'
+                            : 'No background conditions',
+                        value: _noBackgroundConditions,
+                        onChanged: (value) {
+                          setState(() {
+                            _noBackgroundConditions = value;
+                            if (value) {
+                              _hasHypertension = false;
+                              _hasDiabetes = false;
+                              _hasHighCholesterol = false;
+                              _medicationAnswer = null;
+                            }
+                          });
+                        },
+                      ),
+                      _buildConditionToggle(
+                        context,
+                        label: _t(context, 'hypertension'),
+                        value: _hasHypertension,
+                        enabled: !_noBackgroundConditions,
+                        onChanged: (value) {
+                          setState(() {
+                            _hasHypertension = value;
+                            if (value) {
+                              _noBackgroundConditions = false;
+                            }
+                          });
+                        },
+                      ),
+                      _buildConditionToggle(
+                        context,
+                        label: _t(context, 'diabetes'),
+                        value: _hasDiabetes,
+                        enabled: !_noBackgroundConditions,
+                        onChanged: (value) {
+                          setState(() {
+                            _hasDiabetes = value;
+                            if (value) {
+                              _noBackgroundConditions = false;
+                            }
+                          });
+                        },
+                      ),
+                      _buildConditionToggle(
+                        context,
+                        label: _t(context, 'cholesterol'),
+                        value: _hasHighCholesterol,
+                        enabled: !_noBackgroundConditions,
+                        onChanged: (value) {
+                          setState(() {
+                            _hasHighCholesterol = value;
+                            if (value) {
+                              _noBackgroundConditions = false;
+                            }
+                          });
+                        },
+                      ),
+                      if (!_noBackgroundConditions) ...[
+                        const SizedBox(height: 4),
+                        _buildChoiceField(
+                          context,
+                          title: _t(context, 'medicationQuestion'),
+                          icon: Icons.medication_outlined,
+                          options: _medicationOptions(context),
+                          selectedValue: _medicationAnswer,
+                          onSelected: (value) {
+                            setState(() {
+                              _medicationAnswer = value;
+                            });
+                          },
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: healthProvider.isLoading ||
+                            !_isCoreAssessmentComplete(context)
+                        ? null
+                        : _loadRecommendation,
+                    style: FilledButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: healthProvider.isLoading
+                        ? Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(_t(context, 'submitting')),
+                            ],
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.send_rounded),
+                              const SizedBox(width: 10),
+                              Text(_t(context, 'submit')),
+                            ],
+                          ),
+                  ),
+                ),
+                if (!_isCoreAssessmentComplete(context)) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    _noQuickSymptoms
+                        ? _t(context, 'completeMedication')
+                        : _t(context, 'completeAll'),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppTheme.darkGray,
+                        ),
+                  ),
+                ],
+              ],
             ),
-            const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: healthProvider.isLoading ||
-                        !_isCoreAssessmentComplete(context)
-                    ? null
-                    : _loadRecommendation,
-                icon: healthProvider.isLoading
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.send_rounded),
-                label: Text(
-                  healthProvider.isLoading
-                      ? _t(context, 'submitting')
-                      : _t(context, 'submit'),
+          ),
+          Positioned(
+            left: 0,
+            top: 18,
+            child: Container(
+              width: 3,
+              height: 60,
+              decoration: const BoxDecoration(
+                color: AppTheme.primaryBlue,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(12),
+                  bottomLeft: Radius.circular(12),
                 ),
               ),
             ),
-            if (!_isCoreAssessmentComplete(context)) ...[
-              const SizedBox(height: 8),
-              Text(
-                _noQuickSymptoms
-                    ? _t(context, 'completeMedication')
-                    : _t(context, 'completeAll'),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppTheme.darkGray,
-                    ),
-              ),
-            ],
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -1331,6 +1632,7 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                 title,
                 style: Theme.of(context).textTheme.labelLarge?.copyWith(
                       fontWeight: FontWeight.w700,
+                      color: AppTheme.veryDarkGray,
                     ),
               ),
             ),
@@ -1346,6 +1648,10 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
               label: Text(option),
               selected: selected,
               selectedColor: AppTheme.primaryBlue.withOpacity(0.16),
+              labelStyle: TextStyle(
+                color: AppTheme.veryDarkGray,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+              ),
               onSelected: (_) => onSelected(option),
             );
           }).toList(),
@@ -1384,6 +1690,11 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
       };
     }).toList();
 
+    final background = <String, dynamic>{
+      'known_conditions': conditions,
+      if (!_noBackgroundConditions) 'medication_taken_today': _medicationAnswer,
+    };
+
     return {
       'framework': 'OPQRST',
       'no_quick_symptoms': _noQuickSymptoms,
@@ -1411,10 +1722,7 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
               'timing': _opqrstAnswers[primarySymptom.key]?.timing,
             },
       'opqrst_by_symptom': opqrstList,
-      'background': {
-        'known_conditions': conditions,
-        'medication_taken_today': _medicationAnswer,
-      },
+      'background': background,
       'submitted_at': DateTime.now().toIso8601String(),
     };
   }
@@ -1447,6 +1755,39 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
     return text.replaceAll('ቪታሚኖች', 'የቫይታል');
   }
 
+  _LocalizedReport _parseRecommendationOutput(
+    String actionPlan,
+    String fallbackDisclaimer,
+  ) {
+    final normalized = _normalizeRecommendationText(actionPlan);
+    final structured = _decodeStructuredRecommendation(normalized);
+    if (structured != null) {
+      return _LocalizedReport(
+        english: _ReportVersion.fromStructured(
+          structured,
+          fallbackDisclaimer,
+        ),
+      );
+    }
+    return _LocalizedReport.fromRawText(normalized, fallbackDisclaimer);
+  }
+
+  Map<String, dynamic>? _decodeStructuredRecommendation(String raw) {
+    var cleaned = raw.trim();
+    cleaned = cleaned.replaceFirst(
+        RegExp(r'^```(?:json)?\s*', caseSensitive: false), '');
+    cleaned = cleaned.replaceFirst(RegExp(r'\s*```$'), '');
+    try {
+      final decoded = jsonDecode(cleaned);
+      if (decoded is Map<String, dynamic> && decoded['sections'] is List) {
+        return decoded;
+      }
+    } catch (_) {
+      return null;
+    }
+    return null;
+  }
+
   String? _buildVitalsSummary(HealthProvider healthProvider) {
     final vitals = healthProvider.currentVitals;
     if (vitals == null) return null;
@@ -1456,34 +1797,167 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
     return 'Vitals: HR ${vitals.heartRate} bpm, SpO2 $spo2%, Temp $temp C, BP ${vitals.systolicBP}/${vitals.diastolicBP}.';
   }
 
+  Widget _buildVitalsStrip(
+      BuildContext context, HealthProvider healthProvider) {
+    final vitals = healthProvider.currentVitals;
+    if (vitals == null) return const SizedBox.shrink();
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _VitalChip(
+            label: 'Heart Rate',
+            value: '${vitals.heartRate}',
+            unit: 'bpm',
+            icon: Icons.favorite_outline,
+            status: _vitalStatus(vitals.heartRate, 60, 100),
+          ),
+          _VitalChip(
+            label: 'SpO2',
+            value: vitals.spo2.toStringAsFixed(1),
+            unit: '%',
+            icon: Icons.air,
+            status: _vitalStatus(vitals.spo2, 95, 100),
+          ),
+          _VitalChip(
+            label: 'Temp',
+            value: vitals.temperature.toStringAsFixed(1),
+            unit: '°C',
+            icon: Icons.thermostat_outlined,
+            status: _vitalStatus(vitals.temperature, 36.1, 37.2),
+          ),
+          _VitalChip(
+            label: 'BP',
+            value: '${vitals.systolicBP}/${vitals.diastolicBP}',
+            unit: 'mmHg',
+            icon: Icons.monitor_heart_outlined,
+            status: _vitalStatus(vitals.systolicBP, 90, 120),
+          ),
+        ],
+      ),
+    );
+  }
+
+  _VitalStatus _vitalStatus(num value, num low, num high) {
+    if (value >= low && value <= high) return _VitalStatus.normal;
+    if ((value - high).abs() < (high - low) * 0.2 ||
+        (value - low).abs() < (high - low) * 0.2) {
+      return _VitalStatus.elevated;
+    }
+    return _VitalStatus.critical;
+  }
+
   Widget _buildClinicalHeader(BuildContext context, HealthAnalysis? analysis,
       HealthRecommendation recommendation,
       {required VoidCallback onRefreshPressed, required bool isRefreshing}) {
     final riskColor = _riskColor(analysis?.riskLevel);
+    final userName = context.read<AuthProvider>().currentUser?.fullName;
+
+    String initialsFor(String? name) {
+      if (name == null || name.trim().isEmpty) {
+        return 'You';
+      }
+      final parts = name.trim().split(RegExp(r'\s+'));
+      if (parts.length == 1) {
+        final word = parts.first;
+        if (word.isEmpty) return 'You';
+        final runes = word.runes.toList();
+        if (runes.isEmpty) return 'You';
+        final first = String.fromCharCode(runes.first);
+        final second = runes.length > 1 ? String.fromCharCode(runes[1]) : '';
+        return ('$first$second').toUpperCase();
+      }
+      final first = parts.first.runes.isEmpty
+          ? ''
+          : String.fromCharCode(parts.first.runes.first);
+      final last = parts.last.runes.isEmpty
+          ? ''
+          : String.fromCharCode(parts.last.runes.first);
+      final initials = ('$first$last').toUpperCase();
+      return initials.isEmpty ? 'You' : initials;
+    }
+
+    String riskLabel(RiskLevel? level) {
+      switch (level) {
+        case RiskLevel.low:
+          return 'Low Risk';
+        case RiskLevel.moderate:
+          return 'Moderate';
+        case RiskLevel.high:
+          return 'High Risk';
+        case RiskLevel.critical:
+          return 'Critical';
+        case null:
+          return 'Assessing';
+      }
+    }
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppTheme.primaryBlue,
-            AppTheme.primaryBlue.withOpacity(0.8),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: AppTheme.primaryBlue,
         borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primaryBlue.withOpacity(0.25),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppTheme.white.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  initialsFor(userName),
+                  style: const TextStyle(
+                    color: AppTheme.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: riskColor.withOpacity(0.25),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: riskColor.withOpacity(0.5)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: riskColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      riskLabel(analysis?.riskLevel),
+                      style: const TextStyle(
+                        color: AppTheme.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
           Wrap(
             spacing: 10,
             runSpacing: 8,
@@ -1493,24 +1967,9 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                 _t(context, 'aiBrief'),
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       color: AppTheme.white,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 20,
                     ),
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                decoration: BoxDecoration(
-                  color: riskColor.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: riskColor.withOpacity(0.35)),
-                ),
-                // child: Text(
-                //   riskLabel,
-                //   style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                //         color: AppTheme.white,
-                //         fontWeight: FontWeight.w700,
-                //       ),
-                // ),
               ),
             ],
           ),
@@ -1518,7 +1977,8 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
           Text(
             _t(context, 'briefSubtitle'),
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppTheme.white.withOpacity(0.9),
+                  color: AppTheme.white.withOpacity(0.85),
+                  fontSize: 13,
                 ),
           ),
           const SizedBox(height: 12),
@@ -1567,12 +2027,23 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    LinearProgressIndicator(
-                      value: recommendation.completionPercentage / 100,
-                      minHeight: 7,
-                      backgroundColor: AppTheme.white.withOpacity(0.18),
-                      valueColor:
-                          const AlwaysStoppedAnimation(AppTheme.accentGreen),
+                    Text(
+                      'Completion: ${recommendation.completionPercentage}%',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: AppTheme.white.withOpacity(0.7),
+                            fontSize: 11,
+                          ),
+                    ),
+                    const SizedBox(height: 6),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: recommendation.completionPercentage / 100,
+                        minHeight: 7,
+                        backgroundColor: AppTheme.white.withOpacity(0.18),
+                        valueColor:
+                            const AlwaysStoppedAnimation(AppTheme.accentGreen),
+                      ),
                     ),
                   ],
                 );
@@ -1599,12 +2070,29 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: LinearProgressIndicator(
-                      value: recommendation.completionPercentage / 100,
-                      minHeight: 7,
-                      backgroundColor: AppTheme.white.withOpacity(0.18),
-                      valueColor:
-                          const AlwaysStoppedAnimation(AppTheme.accentGreen),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Completion: ${recommendation.completionPercentage}%',
+                          style:
+                              Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: AppTheme.white.withOpacity(0.7),
+                                    fontSize: 11,
+                                  ),
+                        ),
+                        const SizedBox(height: 6),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: recommendation.completionPercentage / 100,
+                            minHeight: 7,
+                            backgroundColor: AppTheme.white.withOpacity(0.18),
+                            valueColor: const AlwaysStoppedAnimation(
+                                AppTheme.accentGreen),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -1654,116 +2142,206 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
     );
   }
 
-  Widget _buildSectionCard(BuildContext context, _ReportSection section) {
+  Widget _buildSectionCard(
+    BuildContext context,
+    _ReportSection section, {
+    int animationIndex = 0,
+  }) {
     final accent = _sectionColor(section.title);
     final icon = _sectionIcon(section.title);
+    final confidence = _confidenceFor(section.title);
+    final delayMs = 80 * animationIndex;
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: accent.withOpacity(0.22)),
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: Duration(milliseconds: 350 + delayMs),
+      curve: Interval(
+        delayMs / (350 + delayMs),
+        1.0,
+        curve: Curves.easeOut,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: accent.withOpacity(0.14),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: accent, size: 20),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  section.title,
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-              ),
-            ],
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, 20 * (1 - value)),
+            child: child,
           ),
-          if (section.paragraphs.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            ...section.paragraphs.map(
-              (line) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Text(
-                  line,
-                  style: Theme.of(context).textTheme.bodyMedium,
+        );
+      },
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: AppTheme.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 4,
+              decoration: BoxDecoration(
+                color: accent,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  bottomLeft: Radius.circular(16),
                 ),
               ),
             ),
-          ],
-          if (section.bullets.isNotEmpty) ...[
-            const SizedBox(height: 2),
-            ...section.bullets.map(
-              (line) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Row(
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Icon(Icons.circle, size: 8, color: accent),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: accent.withOpacity(0.14),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(icon, color: accent, size: 20),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            section.title,
+                            style: Theme.of(context).textTheme.titleLarge,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        line,
-                        style: Theme.of(context).textTheme.bodyMedium,
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Text(
+                          'AI confidence',
+                          style:
+                              Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: AppTheme.darkGray,
+                                    fontSize: 11,
+                                  ),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(3),
+                            child: LinearProgressIndicator(
+                              value: confidence,
+                              minHeight: 5,
+                              backgroundColor: AppTheme.lightGray,
+                              valueColor: AlwaysStoppedAnimation<Color>(accent),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${(confidence * 100).round()}%',
+                          style:
+                              Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: accent,
+                                    fontSize: 11,
+                                  ),
+                        ),
+                      ],
+                    ),
+                    if (section.paragraphs.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      ...section.paragraphs.map(
+                        (line) => Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Text(
+                            line,
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
+                    if (section.bullets.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      ...section.bullets.map(
+                        (line) => Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 10,
+                                height: 10,
+                                margin: const EdgeInsets.only(top: 6),
+                                decoration: BoxDecoration(
+                                  color: accent.withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                                child: Icon(
+                                  Icons.check,
+                                  size: 8,
+                                  color: accent,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  line,
+                                  style: Theme.of(context).textTheme.bodyMedium,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                    if (section.numberedItems.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      ...section.numberedItems.asMap().entries.map(
+                            (entry) => Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    width: 24,
+                                    height: 24,
+                                    alignment: Alignment.center,
+                                    decoration: BoxDecoration(
+                                      color: accent.withOpacity(0.14),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      '${entry.key + 1}',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelMedium
+                                          ?.copyWith(
+                                            color: accent,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      entry.value,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                    ],
                   ],
                 ),
               ),
             ),
           ],
-          if (section.numberedItems.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            ...section.numberedItems.asMap().entries.map(
-                  (entry) => Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 24,
-                          height: 24,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: accent.withOpacity(0.14),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            '${entry.key + 1}',
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelMedium
-                                ?.copyWith(
-                                  color: accent,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            entry.value,
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-          ],
-        ],
+        ),
       ),
     );
   }
@@ -1888,6 +2466,20 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
     }
   }
 
+  double _confidenceFor(String title) {
+    final lower = title.toLowerCase();
+    if (lower.contains('assessment') || lower.contains('ግምገማ')) {
+      return 0.88;
+    }
+    if (lower.contains('risk') || lower.contains('stratification')) {
+      return 0.92;
+    }
+    if (lower.contains('recommendation')) {
+      return 0.95;
+    }
+    return 0.80;
+  }
+
   Color _sectionColor(String title) {
     final lower = title.toLowerCase();
     if (lower.contains('assessment') || lower.contains('ግምገማ')) {
@@ -1944,6 +2536,101 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
       count += section.numberedItems.length;
     }
     return count;
+  }
+}
+
+enum _VitalStatus { normal, elevated, critical }
+
+class _VitalChip extends StatelessWidget {
+  final String label;
+  final String value;
+  final String unit;
+  final IconData icon;
+  final _VitalStatus status;
+
+  const _VitalChip({
+    required this.label,
+    required this.value,
+    required this.unit,
+    required this.icon,
+    required this.status,
+  });
+
+  Color _statusColor() {
+    switch (status) {
+      case _VitalStatus.normal:
+        return AppTheme.accentGreen;
+      case _VitalStatus.elevated:
+        return AppTheme.accentOrange;
+      case _VitalStatus.critical:
+        return AppTheme.accentRed;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final statusColor = _statusColor();
+
+    return Container(
+      margin: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppTheme.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTheme.mediumGray, width: 0.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: AppTheme.primaryBlue),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppTheme.darkGray,
+                      fontSize: 11,
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                value,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: AppTheme.veryDarkGray,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 18,
+                    ),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                unit,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppTheme.darkGray,
+                      fontSize: 11,
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: statusColor,
+              shape: BoxShape.circle,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -2005,12 +2692,13 @@ class _LocalizedReport {
   factory _LocalizedReport.fromRawText(String raw, String fallbackDisclaimer) {
     final normalized = raw.replaceAll('\r\n', '\n').trim();
     if (normalized.isEmpty) {
+      final sanitized = _ReportVersion._sanitizeDisclaimer(fallbackDisclaimer);
       return _LocalizedReport(
         english: _ReportVersion(
           languageCode: 'en',
           languageLabel: 'English',
           sections: [],
-          disclaimer: fallbackDisclaimer,
+          disclaimer: sanitized,
         ),
       );
     }
@@ -2086,6 +2774,44 @@ class _ReportVersion {
     required this.sections,
     required this.disclaimer,
   });
+
+  factory _ReportVersion.fromStructured(
+    Map<String, dynamic> raw,
+    String fallbackDisclaimer,
+  ) {
+    final languageRaw = raw['language']?.toString() ?? 'english';
+    final languageCode =
+        languageRaw.toLowerCase().startsWith('am') ? 'am' : 'en';
+    final sectionsRaw = raw['sections'];
+    final sections = <_ReportSection>[];
+
+    if (sectionsRaw is List) {
+      for (final item in sectionsRaw) {
+        if (item is! Map) continue;
+        final title = item['title']?.toString().trim();
+        if (title == null || title.isEmpty) continue;
+        sections.add(
+          _ReportSection(
+            title: title,
+            paragraphs: _stringList(item['paragraphs']),
+            bullets: _stringList(item['bullets']),
+            numberedItems: _stringList(item['numbered']),
+          ),
+        );
+      }
+    }
+
+    final disclaimer = raw['disclaimer']?.toString().trim();
+    final sanitizedFallback = _sanitizeDisclaimer(fallbackDisclaimer);
+    final sanitizedDisclaimer = _sanitizeDisclaimer(disclaimer);
+
+    return _ReportVersion(
+      languageCode: languageCode,
+      languageLabel: languageCode == 'am' ? 'አማርኛ' : 'English',
+      sections: sections,
+      disclaimer: sanitizedDisclaimer ?? sanitizedFallback,
+    );
+  }
 
   factory _ReportVersion.parse(
     String text,
@@ -2171,12 +2897,46 @@ class _ReportVersion {
       languageCode: languageCode,
       languageLabel: languageCode == 'am' ? 'አማርኛ' : 'English',
       sections: sections,
-      disclaimer: disclaimer ?? fallbackDisclaimer,
+      disclaimer: _sanitizeDisclaimer(disclaimer ?? fallbackDisclaimer),
     );
   }
 
   static String _cleanText(String value) {
     return value.replaceAll('**', '').replaceAll('*', '').trim();
+  }
+
+  static List<String> _stringList(dynamic value) {
+    if (value is List) {
+      return value
+          .where((item) => item != null)
+          .map((item) => item.toString().trim())
+          .where((item) => item.isNotEmpty)
+          .toList();
+    }
+    return const [];
+  }
+
+  static String? _sanitizeDisclaimer(String? text) {
+    if (text == null) return null;
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return null;
+    final lower = trimmed.toLowerCase();
+    final containsAi = lower.contains('ai-generated') ||
+        lower.contains('ai generated') ||
+        lower.contains('ai-generated guidance') ||
+        lower.contains('ai generated guidance');
+    final containsAdvisory = lower.contains('not a clinical diagnosis') ||
+        lower.contains('not clinical diagnosis') ||
+        lower.contains('informational purposes') ||
+        lower.contains('educational summary') ||
+        lower.contains('consult a qualified') ||
+        lower.contains('consult a licensed') ||
+        lower.contains('medical advice');
+
+    if (containsAi || containsAdvisory) {
+      return null;
+    }
+    return trimmed;
   }
 }
 

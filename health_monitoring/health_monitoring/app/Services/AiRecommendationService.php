@@ -14,7 +14,10 @@ class AiRecommendationService
 
     public function __construct()
     {
-        $this->model = config('ollama-laravel.model', 'llama3.2:latest');
+        $configuredModel = config('ollama-laravel.model');
+        $this->model = (is_string($configuredModel) && $configuredModel !== '')
+            ? $configuredModel
+            : 'llama3.2:latest';
         $this->fallbackModels = [
             $this->model,
             'llama3.2:latest',
@@ -36,7 +39,8 @@ class AiRecommendationService
         ?string $currentFeeling = null,
         ?string $historySummary = null,
         ?array $structuredAssessment = null,
-        string $language = 'english'
+        string $language = 'english',
+        ?string $feedbackContext = null
     ): array {
         $normalizedLanguage = str_starts_with(strtolower($language), 'am') ? 'amharic' : 'english';
         $prompt = $this->buildPrompt(
@@ -49,6 +53,7 @@ class AiRecommendationService
             $currentFeeling,
             $historySummary,
             $structuredAssessment,
+            $feedbackContext,
         );
 
         $attemptedModels = [];
@@ -77,19 +82,17 @@ class AiRecommendationService
                     throw new \RuntimeException('Ollama returned an empty recommendation.');
                 }
 
+                $structured = $this->parseStructuredResponse($aiResponse);
                 $translationError = null;
-                if ($normalizedLanguage === 'amharic') {
-                    $translated = $this->translateText($aiResponse, 'am');
-                    if ($translated === null) {
-                        $translationError = 'Translation failed or returned empty text.';
-                    } else {
-                        $aiResponse = $translated;
-                    }
+                if ($normalizedLanguage === 'amharic' && $structured !== null) {
+                    $structured = $this->translateStructured($structured, 'am');
+                    $aiResponse = json_encode($structured, JSON_UNESCAPED_UNICODE);
                 }
 
                 return [
                     'success' => true,
                     'recommendation' => $aiResponse,
+                    'structured' => $structured,
                     'model' => $model,
                     'language' => $normalizedLanguage,
                     'translation_error' => $translationError,
@@ -292,6 +295,18 @@ class AiRecommendationService
         return '';
     }
 
+    private function parseStructuredResponse(string $raw): ?array
+    {
+        $cleaned = trim($raw);
+        $cleaned = preg_replace('/^```(?:json)?\s*/i', '', $cleaned);
+        $cleaned = preg_replace('/\s*```$/', '', $cleaned);
+        $decoded = json_decode($cleaned, true);
+        if (!is_array($decoded) || !isset($decoded['sections'])) {
+            return null;
+        }
+        return $decoded;
+    }
+
     /**
      * Build a safe, effective prompt for medical vitals
      */
@@ -304,11 +319,14 @@ class AiRecommendationService
         ?string $note,
         ?string $currentFeeling,
         ?string $historySummary,
-        ?array $structuredAssessment
+        ?array $structuredAssessment,
+        ?string $feedbackContext
     ): string {
         $userFeelingContext = $currentFeeling
             ? "Current Feeling (user-described): {$currentFeeling}\n"
             : '';
+
+        $feedbackContext = $this->buildFeedbackContext($feedbackContext);
 
         $historyContext = $historySummary
             ? "Recent Health History Summary: {$historySummary}\n"
@@ -316,12 +334,15 @@ class AiRecommendationService
 
         $structuredContext = $this->formatStructuredAssessmentContext($structuredAssessment);
 
-        return "### SYSTEM INSTRUCTIONS:
+        $noteContext = $note ? "User Reported Symptoms: {$note}\n" : '';
+
+        return <<<PROMPT
+### SYSTEM INSTRUCTIONS:
     You are a personal clinical assistant for the current user.
     Provide a concise, evidence-aligned vitals assessment similar to a modern triage summary.
     Use professional, supportive language and practical recommendations.
-    Address the user directly as \"you\" and \"your\".
-    Do not refer to the user as \"the patient\" or \"patients\".
+    Address the user directly as "you" and "your".
+    Do not refer to the user as "the patient" or "patients".
 Do not diagnose diseases.
 
 ### CONTEXT:
@@ -330,10 +351,7 @@ Do not diagnose diseases.
 - SpO2: {$spo2}%
 - Temp: {$temp}°C
 - BP: {$sbp}/{$dbp} mmHg
-" . ($note ? "User Reported Symptoms: {$note}\n" : "")
-            . $userFeelingContext
-            . $structuredContext
-            . $historyContext . "
+{$noteContext}{$userFeelingContext}{$feedbackContext}{$structuredContext}{$historyContext}
 
 ### GUIDELINES:
 1. Compare readings to standard adult reference ranges:
@@ -349,17 +367,89 @@ Do not diagnose diseases.
 7. Integrate the user's current feeling and recent history into prioritization without ignoring objective vitals.
 
 ### OUTPUT FORMAT:
-[Clinical Assessment]
-(2-4 sentences: summarize key findings, note deviations, and likely clinical significance.)
+You MUST respond with only a valid JSON object. No markdown, no explanation, no text before or after the JSON. The response must be parseable by json_decode().
 
-[Risk Stratification]
-(Level: Low/Moderate/High. Include a one-sentence justification grounded in the vitals.)
+{
+    "sections": [
+        {
+            "id": "assessment",
+            "title": "Clinical Assessment",
+            "paragraphs": ["string"],
+            "bullets": [],
+            "numbered": [],
+            "confidence": 0.88
+        },
+        {
+            "id": "risk",
+            "title": "Risk Stratification",
+            "paragraphs": ["Level: Low. One-sentence justification."],
+            "bullets": [],
+            "numbered": [],
+            "confidence": 0.92
+        },
+        {
+            "id": "recommendations",
+            "title": "Clinical Recommendations",
+            "paragraphs": [],
+            "bullets": ["bullet 1", "bullet 2", "bullet 3"],
+            "numbered": [],
+            "confidence": 0.95
+        },
+        {
+            "id": "monitoring",
+            "title": "Feedback and Monitoring Plan",
+            "paragraphs": [],
+            "bullets": [],
+            "numbered": ["item 1", "item 2"],
+            "confidence": 0.80
+        }
+    ],
+    "risk_level": "low",
+    "disclaimer": "This is AI-generated guidance, not a medical diagnosis.",
+    "language": "english"
+}
 
-[Clinical Recommendations]
-(3-5 bullet points. Start with urgent steps if needed, then practical follow-up steps.)
+Rules: risk_level must be one of: "low", "moderate", "high", "critical". confidence is a float 0.0-1.0 reflecting how certain the assessment is for that section. Use "bullets" for unordered action items and "numbered" for ordered steps. "paragraphs" for prose. Never mix types within a section.
+PROMPT;
+    }
 
-[Feedback and Monitoring Plan]
-(2-4 bullet points describing what to monitor in the next 24-72h, what trend changes matter, and when to escalate care.)";
+    private function buildFeedbackContext(?string $feedbackContext): string
+    {
+        if (!$feedbackContext) {
+            return '';
+        }
+        return "User Feedback on Previous Recommendations: {$feedbackContext}\n";
+    }
+
+    private function translateStructured(array $structured, string $target): array
+    {
+        foreach ($structured['sections'] as &$section) {
+            $section['paragraphs'] = array_map(
+                fn($s) => $this->translateText($s, $target) ?? $s,
+                $section['paragraphs']
+            );
+            $section['bullets'] = array_map(
+                fn($s) => $this->translateText($s, $target) ?? $s,
+                $section['bullets']
+            );
+            $section['numbered'] = array_map(
+                fn($s) => $this->translateText($s, $target) ?? $s,
+                $section['numbered']
+            );
+            if (isset($section['title'])) {
+                $section['title'] = $this->translateText($section['title'], $target)
+                    ?? $section['title'];
+            }
+        }
+        unset($section);
+        if (isset($structured['disclaimer'])) {
+            $structured['disclaimer'] = $this->translateText(
+                $structured['disclaimer'],
+                $target
+            ) ?? $structured['disclaimer'];
+        }
+        $structured['language'] = 'amharic';
+        return $structured;
     }
 
     private function formatStructuredAssessmentContext(?array $structuredAssessment): string
