@@ -1,6 +1,6 @@
 databases:
   - name: health-monitoring-db
-    plan: basic-256mb
+    plan: free
     databaseName: health_monitoring
     user: health_monitoring
     postgresMajorVersion: "16"
@@ -9,7 +9,7 @@ services:
   - type: web
     name: health-monitoring-api
     runtime: docker
-    plan: starter
+    plan: free
     dockerfilePath: ./Dockerfile
     dockerCommand: start-web
     healthCheckPath: /up
