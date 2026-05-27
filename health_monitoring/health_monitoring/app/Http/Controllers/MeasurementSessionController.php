@@ -219,7 +219,8 @@ class MeasurementSessionController extends Controller
         ];
 
         try {
-            $response = Http::timeout(3)->post('http://127.0.0.1:5000/predict', $mlPayload);
+            $response = Http::timeout((int) config('services.ml.timeout', 3))
+                ->post(rtrim(config('services.ml.url'), '/') . '/predict', $mlPayload);
             if ($response->failed()) {
                 throw new \Exception('ML Service returned an error');
             }

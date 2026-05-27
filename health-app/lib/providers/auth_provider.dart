@@ -393,10 +393,9 @@ class AuthProvider extends ChangeNotifier {
 
   String _networkHintMessage() {
     return 'Cannot reach backend API from this phone. '
-        'If running on a USB-debugged Android device, run: '
-        'adb reverse tcp:8000 tcp:8000 and adb reverse tcp:5001 tcp:5001, '
-        'then start app with --dart-define=API_BASE_URL=http://127.0.0.1:8000/api '
-        'and --dart-define=USB_BRIDGE_URL=http://127.0.0.1:5001. '
+        'Check the device has internet access. '
+        'For the local USB bridge on a USB-debugged Android device, run: '
+        'adb reverse tcp:5001 tcp:5001. '
         'Current API URL: ${ApiConfig.baseUrl}';
   }
 

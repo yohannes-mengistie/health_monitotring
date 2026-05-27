@@ -201,7 +201,8 @@ class SensorController extends Controller
 
         // 4. Call the Python ML FastAPI Service
         try {
-            $response = Http::timeout(3)->post('http://127.0.0.1:5000/predict', $mlPayload);
+            $response = Http::timeout((int) config('services.ml.timeout', 3))
+                ->post(rtrim(config('services.ml.url'), '/') . '/predict', $mlPayload);
 
             if ($response->failed()) {
                 throw new \Exception("ML Service returned an error");
@@ -239,7 +240,8 @@ class SensorController extends Controller
                 ],
             ];
 
-            $feedbackResponse = Http::timeout(8)->post('http://127.0.0.1:9000/generate-clinical-report', $feedbackPayload);
+            $feedbackResponse = Http::timeout((int) config('services.feedback.timeout', 8))
+                ->post(rtrim(config('services.feedback.url'), '/') . '/generate-clinical-report', $feedbackPayload);
             if ($feedbackResponse->successful()) {
                 $feedbackResult = $feedbackResponse->json();
             } else {
@@ -408,7 +410,7 @@ class SensorController extends Controller
             $pulsePressure = round((float) $latest->systolic_bp - (float) $latest->diastolic_bp, 2);
             $mapValue      = round((float) $latest->diastolic_bp + ($pulsePressure / 3), 2);
 
-            $response = Http::timeout(12)->post('http://127.0.0.1:9000/generate-clinical-report', [
+            $response = Http::timeout(12)->post(rtrim(config('services.feedback.url'), '/') . '/generate-clinical-report', [
                 'language' => $language,
                 'vitals'   => [
                     'Heart Rate'               => (float) $latest->heart_rate,

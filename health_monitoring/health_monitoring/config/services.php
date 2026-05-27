@@ -41,4 +41,14 @@ return [
         'timeout' => env('TRANSLATE_TIMEOUT', 12),
     ],
 
+    'ml' => [
+        'url' => env('ML_SERVICE_URL', 'http://127.0.0.1:5000'),
+        'timeout' => env('ML_SERVICE_TIMEOUT', 3),
+    ],
+
+    'feedback' => [
+        'url' => env('FEEDBACK_SERVICE_URL', 'http://127.0.0.1:9000'),
+        'timeout' => env('FEEDBACK_SERVICE_TIMEOUT', 8),
+    ],
+
 ];

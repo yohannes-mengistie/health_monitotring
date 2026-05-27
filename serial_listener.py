@@ -20,10 +20,12 @@ BAUD_RATE = int(os.getenv("BAUD_RATE", "115200"))
 DEVICE_ID = os.getenv("DEVICE_ID", "ETHIOBIO_01")
 
 LARAVEL_API_URL = os.getenv(
-    "LARAVEL_API_URL", "http://127.0.0.1:8000/api/health-data"
+    "LARAVEL_API_URL",
+    "https://health-monitoring-api.onrender.com/api/health-data",
 )
 LARAVEL_EVENTS_URL = os.getenv(
-    "LARAVEL_EVENTS_URL", "http://127.0.0.1:8000/api/measurement-events"
+    "LARAVEL_EVENTS_URL",
+    "https://health-monitoring-api.onrender.com/api/measurement-events",
 )
 LARAVEL_USER_API_URL = os.getenv("LARAVEL_USER_API_URL", "")
 
